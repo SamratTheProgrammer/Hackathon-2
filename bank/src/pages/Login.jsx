@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
@@ -9,14 +10,23 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsLoading(false);
+
+        const email = e.target[0].value;
+        const password = e.target[1].value;
+
+        try {
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, { email, password });
+            localStorage.setItem("userInfo", JSON.stringify(data));
             navigate("/dashboard");
-        }, 1500);
+        } catch (error) {
+            console.error("Login failed", error);
+            alert(error.response?.data?.message || "Login failed");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -67,7 +77,7 @@ const Login = () => {
                         <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                         <span className="text-gray-600 dark:text-gray-300">Remember me</span>
                     </label>
-                    <Link to="/forgot-password" class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">Forgot Password?</Link>
+                    <Link to="/forgot-password" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">Forgot Password?</Link>
                 </div>
 
                 <Button type="submit" className="w-full justify-center" disabled={isLoading}>

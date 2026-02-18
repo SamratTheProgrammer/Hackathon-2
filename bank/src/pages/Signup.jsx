@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload } from "lucide-react";
@@ -9,14 +10,38 @@ const Signup = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsLoading(false);
+
+        const formData = new FormData();
+        formData.append("name", e.target[0].value);
+        formData.append("email", e.target[1].value);
+        formData.append("dob", e.target[2].value);
+        formData.append("mobile", e.target[3].value);
+        formData.append("password", e.target[4].value);
+        // idProof file is at index 6 (based on currrent form layout, need to be careful with indexing or use refs/state)
+        // Better to use state for inputs or get by name if possible, but form doesn't have names on inputs.
+        // Let's assume the file input is the one with type="file" inside the label.
+        const fileInput = e.target.querySelector('input[type="file"]');
+        if (fileInput && fileInput.files[0]) {
+            formData.append("idProof", fileInput.files[0]);
+        }
+
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            console.log(response.data);
             navigate("/dashboard");
-        }, 1500);
+        } catch (error) {
+            console.error("Signup failed", error);
+            alert(error.response?.data?.message || "Signup failed");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
