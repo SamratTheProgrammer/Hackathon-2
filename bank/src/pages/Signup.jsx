@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload, Image as ImageIcon, X } from "lucide-react";
@@ -14,6 +15,7 @@ const Signup = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+<<<<<<< HEAD
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -61,6 +63,8 @@ const Signup = () => {
 
     const { login } = useTransactions();
 
+=======
+>>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -76,6 +80,7 @@ const Signup = () => {
 
         setIsLoading(true);
 
+<<<<<<< HEAD
         const data = new FormData();
         data.append('name', formData.name);
         data.append('email', formData.email);
@@ -115,6 +120,33 @@ const Signup = () => {
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Signup failed");
+=======
+        const formData = new FormData();
+        formData.append("name", e.target[0].value);
+        formData.append("email", e.target[1].value);
+        formData.append("dob", e.target[2].value);
+        formData.append("mobile", e.target[3].value);
+        formData.append("password", e.target[4].value);
+        // idProof file is at index 6 (based on currrent form layout, need to be careful with indexing or use refs/state)
+        // Better to use state for inputs or get by name if possible, but form doesn't have names on inputs.
+        // Let's assume the file input is the one with type="file" inside the label.
+        const fileInput = e.target.querySelector('input[type="file"]');
+        if (fileInput && fileInput.files[0]) {
+            formData.append("idProof", fileInput.files[0]);
+        }
+
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            console.log(response.data);
+            navigate("/dashboard");
+        } catch (error) {
+            console.error("Signup failed", error);
+            alert(error.response?.data?.message || "Signup failed");
+>>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
         } finally {
             setIsLoading(false);
         }
