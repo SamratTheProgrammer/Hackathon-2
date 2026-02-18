@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String        @id @default(uuid())
+  name        String
+  email       String        @unique
+  password    String
+  mobile      String
+  dob         DateTime
+  kycDocument String?
+  profilePhoto String?
+  role        String        @default("USER") // USER, ADMIN
+  balance     Float         @default(0.0)
+  transactions Transaction[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  amount    Float
+  type      String   // credit, debit
+  status    String   @default("Success") // Success, Pending, Failed
+  date      DateTime @default(now())
+  to        String?  // Recipient name or description
+  rejectionReason String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Reward {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  points      Int
+  image       String?  // URL to image
+  createdAt   DateTime @default(now())
+}
+
+model Coupon {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  discount    String   // e.g., "50% OFF" or "₹100 OFF"
+  expiryDate  DateTime?
+  title       String?  // e.g., "Amazon Shopping"
+  createdAt   DateTime @default(now())
+}

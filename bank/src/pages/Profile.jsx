@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import { User, Mail, Phone, FileText, Camera, Save } from "lucide-react";
@@ -7,8 +7,25 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const Profile = () => {
     const { user, updateUser } = useTransactions();
-    const [formData, setFormData] = useState(user);
+    const [formData, setFormData] = useState(user || {
+        name: '',
+        email: '',
+        mobile: '',
+        bio: '',
+        avatar: ''
+    });
     const [showSuccess, setShowSuccess] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                ...user,
+                // Ensure mobile maps if needed, though user should have mobile from DB
+                mobile: user.mobile || user.phone || ''
+            }));
+        }
+    }, [user]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -72,8 +89,8 @@ const Profile = () => {
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="tel"
-                                name="phone"
-                                value={formData.phone}
+                                name="mobile"
+                                value={formData.mobile || ''}
                                 disabled
                                 className="w-full pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 cursor-not-allowed outline-none"
                             />

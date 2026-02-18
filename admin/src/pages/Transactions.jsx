@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     MoreHorizontal,
     Search,
@@ -19,16 +20,28 @@ import {
     TableRow
 } from '../components/ui/table';
 
-const transactionsData = Array.from({ length: 15 }).map((_, i) => ({
-    id: `TXN-${5000 + i}`,
-    user: `User ${i + 1}`,
-    type: i % 2 === 0 ? 'credit' : 'debit',
-    amount: `₹${(Math.random() * 5000).toFixed(2)}`,
-    status: i % 4 === 0 ? 'success' : i % 4 === 1 ? 'pending' : i % 4 === 2 ? 'failed' : 'success',
-    date: '2023-10-25 14:30',
-}));
-
 const Transactions = () => {
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const API_URL = 'http://localhost:5000/api';
+
+    useEffect(() => {
+        fetchTransactions();
+    }, []);
+
+    const fetchTransactions = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/transactions/all`);
+            setTransactions(response.data);
+        } catch (error) {
+            console.error("Error fetching transactions", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="p-6">Loading transactions...</div>;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -43,7 +56,7 @@ const Transactions = () => {
 
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle>Transaction History</CardTitle>
+                    <CardTitle>Transaction History ({transactions.length})</CardTitle>
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-muted" />
@@ -70,10 +83,15 @@ const Transactions = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {transactionsData.map((txn) => (
+                            {transactions.map((txn) => (
                                 <TableRow key={txn.id}>
-                                    <TableCell className="font-medium">{txn.id}</TableCell>
-                                    <TableCell>{txn.user}</TableCell>
+                                    <TableCell className="font-medium text-xs">{txn.id.substring(0, 8)}...</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{txn.user?.name || "Unknown"}</span>
+                                            <span className="text-xs text-neutral-muted">{txn.user?.email}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1">
                                             {txn.type === 'credit' ? (
@@ -85,14 +103,19 @@ const Transactions = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell className={txn.type === 'credit' ? 'text-status-success font-medium' : 'text-neutral-text'}>
-                                        {txn.type === 'credit' ? '+' : '-'}{txn.amount}
+                                        {txn.type === 'credit' ? '+' : '-'}₹{txn.amount}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={txn.status}>
-                                            {txn.status.charAt(0).toUpperCase() + txn.status.slice(1)}
+                                        <Badge variant={
+                                            txn.status === 'Success' ? 'success' :
+                                                txn.status === 'Pending' ? 'warning' : 'destructive'
+                                        }>
+                                            {txn.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right text-neutral-muted">{txn.date}</TableCell>
+                                    <TableCell className="text-right text-neutral-muted text-xs">
+                                        {new Date(txn.date).toLocaleString()}
+                                    </TableCell>
                                     <TableCell>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
                                             <MoreHorizontal size={16} />

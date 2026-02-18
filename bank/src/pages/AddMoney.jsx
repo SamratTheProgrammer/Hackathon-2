@@ -1,18 +1,31 @@
 import { useState } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { CreditCard, Smartphone, Building2 } from "lucide-react";
+import { CreditCard, Smartphone, Building2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTransactions } from "../context/TransactionContext";
 
 const AddMoney = () => {
+    const { addTransaction } = useTransactions();
     const [amount, setAmount] = useState("");
     const [selectedMethod, setSelectedMethod] = useState("upi");
     const [showSuccess, setShowSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleAddMoney = (e) => {
+    const handleAddMoney = async (e) => {
         e.preventDefault();
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        setLoading(true);
+        const success = await addTransaction({
+            amount: parseFloat(amount),
+            type: 'credit',
+            to: `Added via ${selectedMethod.toUpperCase()}`
+        });
+        setLoading(false);
+
+        if (success) {
+            setShowSuccess(true);
+            setAmount("");
+        }
     };
 
     const methods = [
@@ -82,13 +95,13 @@ const AddMoney = () => {
                         </div>
                     </div>
 
-                    <Button type="submit" className="w-full justify-center text-lg py-4" disabled={!amount}>
-                        Proceed to Add ₹{amount || "0"}
+                    <Button type="submit" className="w-full justify-center text-lg py-4" disabled={!amount || loading}>
+                        {loading ? "Processing..." : `Proceed to Add ₹${amount || "0"}`}
                     </Button>
                 </form>
             </Card>
 
-            {/* Success Modal Simulation */}
+            {/* Success Modal */}
             <AnimatePresence>
                 {showSuccess && (
                     <motion.div
@@ -102,11 +115,11 @@ const AddMoney = () => {
                             animate={{ scale: 1, y: 0 }}
                             className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-4"
                         >
-                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Smartphone size={40} />
+                            <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Clock size={40} />
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Money Added!</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-6">₹{amount} has been successfully added to your wallet.</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Request Sent!</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-6">Your request to add ₹{amount} has been sent for approval. Your balance will be updated once approved.</p>
                             <Button onClick={() => setShowSuccess(false)} className="w-full justify-center">Done</Button>
                         </motion.div>
                     </motion.div>

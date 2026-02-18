@@ -4,11 +4,13 @@ import { Menu, X, Sun, Moon, Laptop } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import { useTransactions } from "../context/TransactionContext";
 
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { theme, setTheme } = useTheme();
+    const { user } = useTransactions();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -65,11 +67,25 @@ const Navbar = () => {
                         ))}
                     </div>
 
-                    <Link to="/login">
-                        <Button variant="primary" size="sm">
-                            Get Started
-                        </Button>
-                    </Link>
+                    {user ? (
+                        <div className="flex items-center gap-4">
+                            <Link to="/profile">
+                                {user.avatar ? (
+                                    <img src={user.avatar} alt="Profile" className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                                        {user.name?.charAt(0)}
+                                    </div>
+                                )}
+                            </Link>
+                        </div>
+                    ) : (
+                        <Link to="/login">
+                            <Button variant="primary" size="sm">
+                                Get Started
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -122,14 +138,32 @@ const Navbar = () => {
                                 </div>
                             </div>
 
-                            <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                                <Button className="w-full">Get Started</Button>
-                            </Link>
+                            {user ? (
+                                <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <div className="flex items-center gap-3 py-2 border-t border-gray-100 dark:border-gray-800 mt-2">
+                                        {user.avatar ? (
+                                            <img src={user.avatar} alt="Profile" className="w-10 h-10 rounded-full" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                                                {user.name?.charAt(0)}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-gray-900 dark:text-white">{user.name}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ) : (
+                                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button className="w-full">Get Started</Button>
+                                </Link>
+                            )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </nav>
+        </nav >
     );
 };
 

@@ -1,123 +1,257 @@
-import React from 'react';
-import {
-    Gift,
-    Plus,
-    Search,
-    MoreHorizontal,
-    Copy
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Plus, Trash2, Gift, Ticket, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '../components/ui/table';
+import { Input } from '../components/ui/input';
 
-const rewardsData = [
-    { id: 'RWD-001', code: 'WELCOME50', description: 'New User Bonus', value: '₹50', type: 'Cashback', status: 'active', used: 1240 },
-    { id: 'RWD-002', code: 'FESTIVE100', description: 'Diwali Special', value: '₹100', type: 'Voucher', status: 'expired', used: 850 },
-    { id: 'RWD-003', code: 'DIGIPAY20', description: 'Bill Payment Offer', value: '20%', type: 'Discount', status: 'active', used: 3420 },
-    { id: 'RWD-004', code: 'REFER500', description: 'Referral Bonus', value: '₹500', type: 'Cashback', status: 'active', used: 560 },
-    { id: 'RWD-005', code: 'SUMMER25', description: 'Summer Sale', value: '25%', type: 'Discount', status: 'pending', used: 0 },
-];
+// Simple Alert Component for notifications
+const Alert = ({ message, type }) => (
+    <div className={`p-4 rounded-lg mb-4 ${type === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+        {message}
+    </div>
+);
 
 const Rewards = () => {
+    const [rewards, setRewards] = useState([]);
+    const [coupons, setCoupons] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('rewards');
+    const [message, setMessage] = useState(null);
+
+    // Form States
+    const [newReward, setNewReward] = useState({ title: '', points: '', description: '' });
+    const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', title: '' });
+
+    const API_URL = 'http://localhost:5000/api';
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            const [rewardsRes, couponsRes] = await Promise.all([
+                axios.get(`${API_URL}/rewards`),
+                axios.get(`${API_URL}/rewards/coupons`)
+            ]);
+            setRewards(rewardsRes.data);
+            setCoupons(couponsRes.data);
+        } catch (error) {
+            console.error("Error fetching data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateReward = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_URL}/rewards`, newReward);
+            setMessage({ type: 'success', text: 'Reward created successfully' });
+            setNewReward({ title: '', points: '', description: '' });
+            fetchData();
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to create reward' });
+        }
+    };
+
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_URL}/rewards/coupons`, newCoupon);
+            setMessage({ type: 'success', text: 'Coupon created successfully' });
+            setNewCoupon({ code: '', discount: '', title: '' });
+            fetchData();
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to create coupon' });
+        }
+    };
+
+    const handleDeleteReward = async (id) => {
+        if (!window.confirm('Are you sure?')) return;
+        try {
+            await axios.delete(`${API_URL}/rewards/${id}`);
+            fetchData();
+        } catch (error) {
+            console.error("Error deleting reward", error);
+        }
+    };
+
+    const handleDeleteCoupon = async (id) => {
+        if (!window.confirm('Are you sure?')) return;
+        try {
+            await axios.delete(`${API_URL}/rewards/coupons/${id}`);
+            fetchData();
+        } catch (error) {
+            console.error("Error deleting coupon", error);
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center text-neutral-muted">Loading...</div>;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Rewards & Coupons</h1>
-                    <p className="text-neutral-muted">Manage promotional offers and reward schemes.</p>
+                    <p className="text-neutral-muted">Manage loyalty rewards and discount coupons.</p>
                 </div>
-                <Button>
-                    <Plus size={16} className="mr-2" />
-                    Create New Offer
-                </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card className="bg-gradient-to-br from-accent-blue/10 to-transparent border-accent-blue/20">
-                    <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-2">
-                        <div className="p-3 rounded-full bg-accent-blue/20 text-accent-blue mb-2">
-                            <Gift size={24} />
-                        </div>
-                        <h3 className="text-2xl font-bold">12</h3>
-                        <p className="text-sm font-medium text-neutral-muted">Active Offers</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-2">
-                        <div className="text-2xl font-bold">₹4.2L</div>
-                        <p className="text-sm font-medium text-neutral-muted">Total Rewards Distributed</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-2">
-                        <div className="text-2xl font-bold">5.8k</div>
-                        <p className="text-sm font-medium text-neutral-muted">Coupons Redeemed</p>
-                    </CardContent>
-                </Card>
+            {message && <Alert message={message.text} type={message.type} />}
+
+            <div className="flex gap-4 border-b border-neutral-muted/20">
+                <button
+                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'rewards' ? 'border-b-2 border-primary text-primary' : 'text-neutral-muted hover:text-neutral-text'}`}
+                    onClick={() => setActiveTab('rewards')}
+                >
+                    Rewards
+                </button>
+                <button
+                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'coupons' ? 'border-b-2 border-primary text-primary' : 'text-neutral-muted hover:text-neutral-text'}`}
+                    onClick={() => setActiveTab('coupons')}
+                >
+                    Coupons
+                </button>
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle>Active Coupons</CardTitle>
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-muted" />
-                        <input
-                            type="text"
-                            placeholder="Search coupons..."
-                            className="h-9 w-64 rounded-lg border border-neutral-muted/20 bg-neutral-bg pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:bg-white/5 dark:text-white dark:border-white/10"
-                        />
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Value</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Redeemed</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rewardsData.map((reward) => (
-                                <TableRow key={reward.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2 font-mono font-medium text-primary dark:text-accent-blue">
-                                            {reward.code}
-                                            <Copy size={12} className="text-neutral-muted cursor-pointer hover:text-primary" />
+            {activeTab === 'rewards' ? (
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Create Reward Form */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Add New Reward</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleCreateReward} className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Reward Title</label>
+                                    <Input
+                                        placeholder="e.g. Amazon Gift Card"
+                                        value={newReward.title}
+                                        onChange={(e) => setNewReward({ ...newReward, title: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Points Required</label>
+                                    <Input
+                                        type="number"
+                                        placeholder="e.g. 500"
+                                        value={newReward.points}
+                                        onChange={(e) => setNewReward({ ...newReward, points: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Description</label>
+                                    <Input
+                                        placeholder="Brief description"
+                                        value={newReward.description}
+                                        onChange={(e) => setNewReward({ ...newReward, description: e.target.value })}
+                                    />
+                                </div>
+                                <Button type="submit" className="w-full">
+                                    <Plus size={16} className="mr-2" /> Create Reward
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+
+                    {/* Rewards List */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Active Rewards</h3>
+                        {rewards.length === 0 ? (
+                            <p className="text-neutral-muted">No rewards created yet.</p>
+                        ) : (
+                            rewards.map((reward) => (
+                                <Card key={reward.id} className="flex items-center justify-between p-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-purple-100 text-purple-600 rounded-full dark:bg-purple-900/30">
+                                            <Gift size={20} />
                                         </div>
-                                    </TableCell>
-                                    <TableCell>{reward.description}</TableCell>
-                                    <TableCell>{reward.type}</TableCell>
-                                    <TableCell className="font-bold">{reward.value}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={reward.status === 'active' ? 'success' : reward.status === 'pending' ? 'pending' : 'failed'}>
-                                            {reward.status.charAt(0).toUpperCase() + reward.status.slice(1)}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">{reward.used}</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreHorizontal size={16} />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                                        <div>
+                                            <h4 className="font-bold">{reward.title}</h4>
+                                            <p className="text-sm text-neutral-muted">{reward.points} Points • {reward.description}</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => handleDeleteReward(reward.id)}>
+                                        <Trash2 size={18} />
+                                    </Button>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Create Coupon Form */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Add New Coupon</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleCreateCoupon} className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Coupon Code</label>
+                                    <Input
+                                        placeholder="e.g. SAVE50"
+                                        value={newCoupon.code}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Discount</label>
+                                    <Input
+                                        placeholder="e.g. 50% OFF"
+                                        value={newCoupon.discount}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, discount: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Title (Optional)</label>
+                                    <Input
+                                        placeholder="e.g. Summer Sale"
+                                        value={newCoupon.title}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, title: e.target.value })}
+                                    />
+                                </div>
+                                <Button type="submit" className="w-full">
+                                    <Plus size={16} className="mr-2" /> Create Coupon
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+
+                    {/* Coupons List */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Active Coupons</h3>
+                        {coupons.length === 0 ? (
+                            <p className="text-neutral-muted">No coupons created yet.</p>
+                        ) : (
+                            coupons.map((coupon) => (
+                                <Card key={coupon.id} className="flex items-center justify-between p-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30">
+                                            <Ticket size={20} />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold">{coupon.code}</h4>
+                                            <p className="text-sm text-neutral-muted">{coupon.discount} • {coupon.title}</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => handleDeleteCoupon(coupon.id)}>
+                                        <Trash2 size={18} />
+                                    </Button>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     Users,
     CreditCard,
@@ -6,7 +7,9 @@ import {
     Activity,
     TrendingUp,
     TrendingDown,
-    MoreHorizontal
+    MoreHorizontal,
+    ArrowUpRight,
+    ArrowDownLeft
 } from 'lucide-react';
 import {
     AreaChart,
@@ -21,7 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 
-const data = [
+// Placeholder chart data - in real app, fetch from API
+const chartData = [
     { name: 'Jan', value: 4000 },
     { name: 'Feb', value: 3000 },
     { name: 'Mar', value: 5000 },
@@ -42,16 +46,52 @@ const StatsCard = ({ title, value, change, icon: Icon, trend }) => (
             </div>
             <div className="flex items-center justify-between mt-4">
                 <div className="text-2xl font-bold">{value}</div>
-                <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${trend === 'up' ? 'text-status-success bg-status-success/10' : 'text-status-failed bg-status-failed/10'}`}>
-                    {trend === 'up' ? <TrendingUp size={14} className="mr-1" /> : <TrendingDown size={14} className="mr-1" />}
-                    {change}
-                </div>
+                {change && (
+                    <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${trend === 'up' ? 'text-status-success bg-status-success/10' : 'text-status-failed bg-status-failed/10'}`}>
+                        {trend === 'up' ? <TrendingUp size={14} className="mr-1" /> : <TrendingDown size={14} className="mr-1" />}
+                        {change}
+                    </div>
+                )}
             </div>
         </CardContent>
     </Card>
 );
 
 const Dashboard = () => {
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        totalTransactions: 0,
+        totalVolume: 0,
+        pendingRequests: 0
+    });
+    const [recentTransactions, setRecentTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const API_URL = 'http://localhost:5000/api';
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            const [statsRes, txRes] = await Promise.all([
+                axios.get(`${API_URL}/admin/stats`),
+                axios.get(`${API_URL}/transactions/all`)
+            ]);
+
+            setStats(statsRes.data);
+            setRecentTransactions(txRes.data.slice(0, 5)); // Get top 5
+        } catch (error) {
+            console.error("Error fetching dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="p-8 text-center text-neutral-muted">Loading dashboard...</div>;
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -65,31 +105,31 @@ const Dashboard = () => {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
                     title="Total Users"
-                    value="12,345"
+                    value={stats.totalUsers}
                     change="+12% from last month"
                     icon={Users}
                     trend="up"
                 />
                 <StatsCard
                     title="Total Transactions"
-                    value="₹45.2 Lakh"
+                    value={stats.totalTransactions}
                     change="+8% from last month"
                     icon={CreditCard}
                     trend="up"
                 />
                 <StatsCard
-                    title="Total Revenue"
-                    value="₹8.4 Lakh"
+                    title="Total Volume"
+                    value={`₹${stats.totalVolume.toLocaleString()}`}
                     change="+24% from last month"
                     icon={Wallet}
                     trend="up"
                 />
                 <StatsCard
-                    title="Pending KYC"
-                    value="142"
-                    change="-5% from last month"
+                    title="Pending Requests"
+                    value={stats.pendingRequests}
+                    change="Needs Attention"
                     icon={Activity}
-                    trend="down"
+                    trend={stats.pendingRequests > 0 ? "down" : "up"}
                 />
             </div>
 
@@ -101,7 +141,7 @@ const Dashboard = () => {
                     <CardContent className="pl-2">
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
@@ -128,23 +168,35 @@ const Dashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-6">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <div key={i} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-full bg-neutral-bg flex items-center justify-center text-lg font-bold text-neutral-muted">
-                                            {String.fromCharCode(64 + i)} {/* A, B, C... */}
+                            {recentTransactions.length === 0 ? (
+                                <p className="text-center text-neutral-muted py-4">No transactions found</p>
+                            ) : (
+                                recentTransactions.map((tx) => (
+                                    <div key={tx.id} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-lg font-bold ${tx.type === 'credit'
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
+                                                    : 'bg-red-100 text-red-600 dark:bg-red-900/30'
+                                                }`}>
+                                                {tx.type === 'credit' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium leading-none">{tx.user?.name || "Unknown User"}</p>
+                                                <p className="text-xs text-neutral-muted">{new Date(tx.date).toLocaleDateString()}</p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-medium leading-none">User {i}</p>
-                                            <p className="text-xs text-neutral-muted">Payment Received</p>
+                                        <div className="flex flex-col items-end">
+                                            <span className={`font-medium text-sm ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                                                }`}>
+                                                {tx.type === 'credit' ? '+' : '-'}₹{tx.amount}
+                                            </span>
+                                            <span className={`text-xs ${tx.status === 'Success' ? 'text-green-500' :
+                                                    tx.status === 'Pending' ? 'text-yellow-500' : 'text-red-500'
+                                                }`}>{tx.status}</span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="font-medium text-sm">+₹2,500.00</span>
-                                        <span className="text-xs text-neutral-muted">2 mins ago</span>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                         <Button variant="outline" className="w-full mt-6">View All Transactions</Button>
                     </CardContent>

@@ -11,10 +11,10 @@ const Button = React.forwardRef(({
     ...props
 }, ref) => {
     const variants = {
-        primary: 'bg-primary text-white hover:bg-primary-light active:bg-primary-dark shadow-[0_4px_14px_0_rgba(15,23,42,0.39)] transition-all duration-200',
-        secondary: 'bg-white text-neutral-text border border-neutral-muted/20 hover:bg-neutral-bg shadow-sm',
-        outline: 'border-2 border-primary text-primary hover:bg-primary/5',
-        ghost: 'text-neutral-text hover:bg-neutral-bg/50',
+        primary: 'bg-primary text-white hover:bg-primary-light active:bg-primary-dark shadow-[0_4px_14px_0_rgba(15,23,42,0.39)] transition-all duration-200 dark:shadow-none dark:hover:bg-primary/90',
+        secondary: 'bg-white text-neutral-text border border-neutral-muted/20 hover:bg-neutral-bg shadow-sm dark:bg-dark-card dark:text-dark-text dark:border-white/10 dark:hover:bg-white/5',
+        outline: 'border-2 border-primary text-primary hover:bg-primary/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10',
+        ghost: 'text-neutral-text hover:bg-neutral-bg/50 dark:text-dark-text dark:hover:bg-white/10',
         danger: 'bg-status-failed text-white hover:bg-red-600 shadow-md',
         success: 'bg-status-success text-white hover:bg-emerald-600 shadow-md',
     };

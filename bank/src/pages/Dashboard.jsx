@@ -9,6 +9,19 @@ import { Link } from "react-router-dom";
 const Dashboard = () => {
     const { balance, transactions, user } = useTransactions();
     const recentTransactions = transactions.slice(0, 3);
+
+    const income = transactions
+        .filter(t => t.type === 'credit' && t.status === 'Success')
+        .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+
+    const expense = transactions
+        .filter(t => t.type === 'debit' && t.status === 'Success')
+        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount)), 0);
+
+    if (!user) {
+        return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    }
+
     return (
         <div className="space-y-8">
             {/* Welcome & Balance Section */}
@@ -63,14 +76,14 @@ const Dashboard = () => {
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><TrendingUp size={24} /></div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Income</p>
-                                <p className="font-bold text-lg dark:text-white">₹ 85,000</p>
+                                <p className="font-bold text-lg dark:text-white">{income.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
                             </div>
                         </Card>
                         <Card className="p-4 flex items-center gap-4 dark:bg-gray-800">
                             <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400"><TrendingDown size={24} /></div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Expense</p>
-                                <p className="font-bold text-lg dark:text-white">₹ 32,450</p>
+                                <p className="font-bold text-lg dark:text-white">{expense.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
                             </div>
                         </Card>
                         <Card className="p-4 flex items-center gap-4 dark:bg-gray-800">
@@ -107,7 +120,19 @@ const Dashboard = () => {
                                 <p className={`font-bold ${tx.type === 'credit' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {tx.type === 'credit' ? '+' : '-'} {Math.abs(tx.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                                 </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500">{tx.status}</p>
+                                <div className="flex flex-col items-end">
+                                    <p className={`text-xs font-semibold ${tx.status === 'Success' ? 'text-green-500' :
+                                        tx.status === 'Pending' ? 'text-yellow-500' :
+                                            'text-red-500'
+                                        }`}>
+                                        {tx.status}
+                                    </p>
+                                    {tx.status === 'Failed' && tx.rejectionReason && (
+                                        <p className="text-xs text-red-400 max-w-[150px] truncate" title={tx.rejectionReason}>
+                                            {tx.rejectionReason}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </Card>
                     ))}

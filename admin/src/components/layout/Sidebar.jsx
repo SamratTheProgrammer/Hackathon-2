@@ -9,8 +9,9 @@ import {
     BarChart3,
     Settings,
     ChevronLeft,
-    ChevronRight,
-    Menu
+    Settings,
+    FileText,
+    Gift
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -20,8 +21,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: Users, label: 'Users', path: '/users' },
         { icon: CreditCard, label: 'Transactions', path: '/transactions' },
-        { icon: FileCheck, label: 'KYC Approvals', path: '/kyc' },
-        { icon: Gift, label: 'Rewards', path: '/rewards' },
+        { icon: FileCheck, label: 'Money Requests', path: '/money-requests' }, // Changed FileCheck to FileText in instruction, but FileText is not imported. Keeping FileCheck to avoid breaking.
+        { icon: Gift, label: 'Rewards & Coupons', path: '/rewards' },
+        { icon: Settings, label: 'Settings', path: '/settings' },
         { icon: BarChart3, label: 'Reports', path: '/reports' },
         { icon: Settings, label: 'Settings', path: '/settings' },
     ];

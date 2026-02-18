@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     MoreHorizontal,
     Search,
     Filter,
-    Download
+    Download,
+    UserCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,16 +19,28 @@ import {
     TableRow
 } from '../components/ui/table';
 
-const usersData = Array.from({ length: 10 }).map((_, i) => ({
-    id: `USR-${1000 + i}`,
-    name: `User ${i + 1}`,
-    email: `user${i + 1}@example.com`,
-    status: i % 3 === 0 ? 'active' : i % 3 === 1 ? 'pending' : 'blocked',
-    date: '2023-10-25',
-    amount: `₹${(Math.random() * 10000).toFixed(2)}`,
-}));
-
 const Users = () => {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const API_URL = 'http://localhost:5000/api';
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/admin/users`);
+            setUsers(response.data);
+        } catch (error) {
+            console.error("Error fetching users", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="p-6">Loading users...</div>;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -39,7 +53,7 @@ const Users = () => {
 
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle>All Users</CardTitle>
+                    <CardTitle>All Users ({users.length})</CardTitle>
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-muted" />
@@ -60,15 +74,16 @@ const Users = () => {
                                 <TableHead className="w-[100px]">UserID</TableHead>
                                 <TableHead>User</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Mobile</TableHead>
                                 <TableHead>Joined Date</TableHead>
                                 <TableHead className="text-right">Wallet Balance</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {usersData.map((user) => (
+                            {users.map((user) => (
                                 <TableRow key={user.id}>
-                                    <TableCell className="font-medium">{user.id}</TableCell>
+                                    <TableCell className="font-medium text-xs">{user.id.substring(0, 8)}...</TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-medium">{user.name}</span>
@@ -76,12 +91,11 @@ const Users = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={user.status === 'active' ? 'success' : user.status === 'pending' ? 'pending' : 'failed'}>
-                                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                                        </Badge>
+                                        <Badge variant="success">Active</Badge>
                                     </TableCell>
-                                    <TableCell>{user.date}</TableCell>
-                                    <TableCell className="text-right font-medium">{user.amount}</TableCell>
+                                    <TableCell>{user.mobile}</TableCell>
+                                    <TableCell>{new Date(user.createdAt || Date.now()).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right font-medium">₹{user.balance?.toFixed(2)}</TableCell>
                                     <TableCell>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
                                             <MoreHorizontal size={16} />

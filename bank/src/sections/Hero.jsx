@@ -2,10 +2,12 @@ import Button from "../components/Button";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTransactions } from "../context/TransactionContext";
 
 const Hero = () => {
+    const { user } = useTransactions();
     return (
-        <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+        <section className="relative pt-32 pb-20 md:pb-32 overflow-hidden">
             {/* Background Gradients */}
             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50 to-green-50 dark:from-gray-900 dark:to-gray-900 -z-20" />
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-100/50 to-transparent dark:from-blue-900/20 -z-10 blur-3xl opacity-60" />
@@ -37,18 +39,26 @@ const Hero = () => {
                         Manage your money, send payments, earn rewards, and experience next-gen digital banking — all in one secure app.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                        <Button className="w-full sm:w-auto">
-                            Download App <ArrowRight size={18} />
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        {user ? (
+                            <Link to="/dashboard">
+                                <Button size="lg" className="shadow-xl shadow-blue-500/20">
+                                    Go to Dashboard <ArrowRight className="ml-2" size={20} />
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link to="/signup">
+                                <Button size="lg" className="shadow-xl shadow-blue-500/20">
+                                    Create Free Account <ArrowRight className="ml-2" size={20} />
+                                </Button>
+                            </Link>
+                        )}
+                        <Button variant="outline" size="lg">
+                            Watch Demo
                         </Button>
-                        <Link to="/signup" className="w-full sm:w-auto">
-                            <Button variant="secondary" className="w-full">
-                                Create Free Account
-                            </Button>
-                        </Link>
                     </div>
 
-                    <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-6 mt-6 text-sm text-gray-500 dark:text-gray-400">
                         <div className="flex items-center gap-2">
                             <CheckCircle2 size={16} className="text-green-500" />
                             <span>No Hidden Fees</span>

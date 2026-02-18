@@ -2,8 +2,10 @@ import SectionWrapper from "../components/SectionWrapper";
 import Button from "../components/Button";
 import { ArrowRight, Download } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTransactions } from "../context/TransactionContext";
 
 const CTA = () => {
+    const { user } = useTransactions();
     return (
         <SectionWrapper className="bg-white dark:bg-gray-900">
             <div className="bg-gradient-to-r from-blue-600 to-green-500 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl">
@@ -19,14 +21,22 @@ const CTA = () => {
                         Join thousands of users who have switched to DigitalDhan for a secure, fast, and rewarding banking experience. Download the app now!
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button className="bg-white text-blue-600 hover:bg-gray-50 hover:text-blue-700 shadow-lg border-none">
-                            <Download size={20} /> Download App
+                        {user ? (
+                            <Link to="/dashboard">
+                                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 border-none shadow-lg shadow-black/20">
+                                    Go to Dashboard
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link to="/signup">
+                                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 border-none shadow-lg shadow-black/20">
+                                    Create Free Account
+                                </Button>
+                            </Link>
+                        )}
+                        <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+                            Contact Sales
                         </Button>
-                        <Link to="/signup">
-                            <Button variant="outline" className="border-white text-white hover:bg-white/20">
-                                Open Free Account <ArrowRight size={20} />
-                            </Button>
-                        </Link>
                     </div>
 
                     <p className="mt-6 text-sm text-blue-100 opacity-80">

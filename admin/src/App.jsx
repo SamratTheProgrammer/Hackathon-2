@@ -8,8 +8,10 @@ import Rewards from './pages/Rewards';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
+import MoneyRequests from './pages/MoneyRequests';
+
 // Placeholder components for other routes
-const KYC = () => <div className="p-4"><h1 className="text-2xl font-bold">KYC Approvals</h1><p className="text-neutral-muted">Coming soon...</p></div>;
+// const KYC = () => <div className="p-4"><h1 className="text-2xl font-bold">KYC Approvals</h1><p className="text-neutral-muted">Coming soon...</p></div>;
 
 function App() {
   return (
@@ -22,7 +24,7 @@ function App() {
           <Route path="rewards" element={<Rewards />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="kyc" element={<KYC />} />
+          <Route path="money-requests" element={<MoneyRequests />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

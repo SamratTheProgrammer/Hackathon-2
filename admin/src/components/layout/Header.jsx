@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 
 const Header = ({ toggleSidebar, isSidebarOpen }) => {
-    const [isDark, setIsDark] = useState(false);
+    const [isDark, setIsDark] = useState(true);
 
     useEffect(() => {
         if (isDark) {
