@@ -39,13 +39,13 @@ export const TransactionProvider = ({ children }) => {
 
                 // Better approach: just use the path as is, but replace backslashes
                 const cleanPath = userData.profilePhoto.replace(/\\/g, '/');
-                // Check if it already has the full URL
-                if (!cleanPath.startsWith('http')) {
+                // Check if it already has the full URL or is a base64 data URI
+                if (cleanPath.startsWith('http') || cleanPath.startsWith('data:')) {
+                    userData.avatar = cleanPath;
+                } else {
                     // Ensure we point to the root where uploads are served, not /api
                     const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
                     userData.avatar = `${baseUrl}/${cleanPath}`;
-                } else {
-                    userData.avatar = cleanPath;
                 }
             } else {
                 userData.avatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -100,17 +100,26 @@ export const TransactionProvider = ({ children }) => {
         setBalance(0);
     };
 
-    const updateUser = (updatedData) => {
-        setUser((prev) => ({ ...prev, ...updatedData }));
+    const updateUser = async (formData) => {
+        try {
+            const response = await axios.put(`${import.meta.env.VITE_API_URL}/user/profile`, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            // Refresh user data from server
+            await fetchUserData();
+            return true;
+        } catch (error) {
+            console.error("Profile update failed", error);
+            toast.error(error.response?.data?.message || "Profile update failed");
+            return false;
+        }
     };
 
     const addTransaction = async (transaction) => {
         try {
-            // Calculate type based on amount sign if not provided, or assume 'debit' for negative
-            // But usually API expects explicit type.
-            // For UI 'addTransaction' usually means local update, but here we want to push to server.
-
-            // Check if it's a "Send Money" or "Add Money" operation
             let type = transaction.type;
             let amount = Math.abs(transaction.amount);
 
@@ -118,7 +127,8 @@ export const TransactionProvider = ({ children }) => {
                 amount,
                 type,
                 to: transaction.to,
-                status: 'Success'
+                status: transaction.status || 'Success',
+                receiverMobile: transaction.receiverMobile
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -126,17 +136,19 @@ export const TransactionProvider = ({ children }) => {
             // Refresh data
             fetchUserData();
             fetchTransactions();
-            return true;
+            // Return response data including rewards info
+            return response.data;
         } catch (error) {
             console.error("Transaction failed", error);
             toast.error(error.response?.data?.message || "Transaction failed");
-            return false;
+            return null;
         }
     };
 
     return (
-        <TransactionContext.Provider value={{ balance, transactions, addTransaction, user, updateUser, login, logout }}>
+        <TransactionContext.Provider value={{ balance, transactions, addTransaction, user, updateUser, login, logout, token, fetchUserData }}>
             {children}
         </TransactionContext.Provider>
     );
 };
+

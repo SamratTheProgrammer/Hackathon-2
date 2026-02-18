@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { ArrowUpRight, ArrowDownLeft, Wallet, Bell, TrendingUp, TrendingDown, Gift } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp, TrendingDown, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTransactions } from "../context/TransactionContext";
 import { Link } from "react-router-dom";
@@ -31,19 +31,7 @@ const Dashboard = () => {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
                             <p className="text-gray-500 dark:text-gray-400">Welcome back, {user.name}!</p>
-                        </div>
-                        <div className="flex gap-4">
-                            <button className="p-2 rounded-full hover:bg-gray-100 relative">
-                                <Bell size={24} className="text-gray-600" />
-                                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                            </button>
-                            <Link to="/profile">
-                                <img
-                                    src={user.avatar}
-                                    alt="Profile"
-                                    className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-700 hover:ring-blue-500 transition-all cursor-pointer"
-                                />
-                            </Link>
+                            <p className="text-sm font-mono text-gray-500 dark:text-gray-500">Ac No: {user.accountNumber || 'N/A'}</p>
                         </div>
                     </div>
 
@@ -90,7 +78,7 @@ const Dashboard = () => {
                             <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400"><Gift size={24} /></div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Rewards</p>
-                                <p className="font-bold text-lg dark:text-white">1,250 pts</p>
+                                <p className="font-bold text-lg dark:text-white">{user.points || 0} pts</p>
                             </div>
                         </Card>
                     </div>

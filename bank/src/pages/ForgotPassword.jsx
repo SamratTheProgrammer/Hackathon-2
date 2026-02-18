@@ -1,20 +1,31 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import { Mail, ArrowLeft, Send, CheckCircle } from "lucide-react";
+import { Mail, ArrowRight, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ForgotPassword = () => {
-    const [step, setStep] = useState(1);
+    const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
 
-    const handleSendOTP = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
+
+        try {
+            await axios.post(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, { email });
+            setEmailSent(true);
+            toast.success("Password reset link sent to your email");
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Failed to send reset link");
+        } finally {
             setIsLoading(false);
-            setStep(2);
-        }, 1500);
+        }
     };
 
     return (
@@ -22,56 +33,55 @@ const ForgotPassword = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center min-h-[50vh]"
         >
-            <Link to="/login" className="inline-flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 text-sm transition-colors">
-                <ArrowLeft size={16} className="mr-1" /> Back to Login
-            </Link>
+            <div className="w-full max-w-md">
+                <Link to="/login" className="flex items-center text-gray-500 hover:text-gray-900 dark:hover:text-white mb-6 transition">
+                    <ArrowLeft size={20} className="mr-2" /> Back to Login
+                </Link>
 
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">Reset Password</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-center mb-8">
-                {step === 1 ? "Enter your email to receive an OTP" : "Enter the OTP sent to your email"}
-            </p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">Reset Password</h2>
+                <p className="text-gray-500 dark:text-gray-400 text-center mb-8">
+                    enter your email address and we'll send you a link to reset your password.
+                </p>
 
-            {step === 1 ? (
-                <form onSubmit={handleSendOTP} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="email"
-                                placeholder="name@example.com"
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
-                                required
-                            />
+                {!emailSent ? (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <Button type="submit" className="w-full justify-center" disabled={isLoading}>
-                        {isLoading ? "Sending OTP..." : "Send OTP"} <Send size={18} className="ml-2" />
-                    </Button>
-                </form>
-            ) : (
-                <form className="space-y-4">
-                    <div className="flex gap-4 justify-center my-6">
-                        {[1, 2, 3, 4].map((_, i) => (
-                            <input
-                                key={i}
-                                type="text"
-                                maxLength="1"
-                                className="w-14 h-14 text-center text-2xl font-bold bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white transition-all"
-                            />
-                        ))}
-                    </div>
 
-                    <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-                        Didn't receive code? <button type="button" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Resend</button>
+                        <Button type="submit" className="w-full justify-center" disabled={isLoading}>
+                            {isLoading ? "Sending..." : "Send Reset Link"} <ArrowRight size={20} />
+                        </Button>
+                    </form>
+                ) : (
+                    <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <p className="text-green-800 dark:text-green-300 font-medium mb-3">Email Sent!</p>
+                        <p className="text-sm text-green-700 dark:text-green-400">
+                            Check your inbox for the password reset link. If you don't see it, check your spam folder.
+                        </p>
+                        <Button
+                            variant="outline"
+                            className="mt-6 w-full justify-center"
+                            onClick={() => setEmailSent(false)}
+                        >
+                            Resend Email
+                        </Button>
                     </div>
-
-                    <Button type="submit" className="w-full justify-center">
-                        Verify & Reset <CheckCircle size={18} className="ml-2" />
-                    </Button>
-                </form>
-            )}
+                )}
+            </div>
         </motion.div>
     );
 };

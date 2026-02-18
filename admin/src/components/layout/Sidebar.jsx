@@ -9,9 +9,7 @@ import {
     BarChart3,
     Settings,
     ChevronLeft,
-    Settings,
-    FileText,
-    Gift
+    FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -25,7 +23,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { icon: Gift, label: 'Rewards & Coupons', path: '/rewards' },
         { icon: Settings, label: 'Settings', path: '/settings' },
         { icon: BarChart3, label: 'Reports', path: '/reports' },
-        { icon: Settings, label: 'Settings', path: '/settings' },
     ];
 
     return (

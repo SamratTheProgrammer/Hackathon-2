@@ -4,17 +4,24 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import axios from 'axios';
+
 import { useTransactions } from "../context/TransactionContext";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { auth } from "../firebase.config";
 
 const Login = () => {
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-<<<<<<< HEAD
+    // 2FA State
+    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [userId, setUserId] = useState(null);
+    const [tempMobile, setTempMobile] = useState(null);
+
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -30,47 +37,107 @@ const Login = () => {
 
     const { login } = useTransactions();
 
-=======
->>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
+    const onCaptchVerify = () => {
+        if (!window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'login-recaptcha', {
+                'size': 'invisible',
+                'callback': (response) => {
+                    // reCAPTCHA solved
+                }
+            });
+        }
+    }
+
+    const sendOtp = (mobile) => {
+        onCaptchVerify();
+        const appVerifier = window.recaptchaVerifier;
+        const formatPh = "+" + mobile.replace(/\D/g, '');
+
+        signInWithPhoneNumber(auth, formatPh, appVerifier)
+            .then((confirmationResult) => {
+                window.confirmationResult = confirmationResult;
+                toast.success(`OTP sent to ${mobile}`);
+            }).catch((error) => {
+                console.error(error);
+                toast.error("Failed to send OTP");
+                setIsLoading(false);
+            });
+    }
+
+    const verifyOtp = () => {
+        setIsLoading(true);
+        window.confirmationResult.confirm(otp).then(async (res) => {
+            // OTP Verified. Now get real token from backend.
+            try {
+                // In a real app, we would send the firebase token to backend.
+                // For this hackathon, we trust the frontend verification and ask backend to issue token.
+                const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login/verify-2fa`, {
+                    userId: userId,
+                    firebaseToken: res._tokenResponse.idToken // Sending it just in case backend wants to verify
+                });
+
+                handleLoginSuccess(response.data);
+            } catch (err) {
+                console.error(err);
+                toast.error("2FA Verification Failed on Server");
+                setIsLoading(false);
+            }
+        }).catch((err) => {
+            console.error(err);
+            toast.error("Invalid OTP");
+            setIsLoading(false);
+        })
+    }
+
+    const handleLoginSuccess = (data) => {
+        if (data.token && data.user) {
+            const userData = data.user;
+            if (userData.profilePhoto && !userData.profilePhoto.startsWith('http')) {
+                userData.avatar = `${import.meta.env.VITE_API_URL.replace('/api', '')}/${userData.profilePhoto}`;
+            } else {
+                userData.avatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            }
+
+            login(userData, data.token);
+            toast.success("Login successful!");
+            setTimeout(() => {
+                navigate("/dashboard");
+            }, 1000);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (showOtpInput) {
+            verifyOtp();
+            return;
+        }
+
         setIsLoading(true);
 
-<<<<<<< HEAD
         try {
             const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, formData);
 
-            if (response.data.token && response.data.user) {
-                // Ensure avatar URL is correct if relative
-                const userData = response.data.user;
-                if (userData.profilePhoto && !userData.profilePhoto.startsWith('http')) {
-                    userData.avatar = `${import.meta.env.VITE_API_URL.replace('/api', '')}/${userData.profilePhoto}`;
-                } else {
-                    userData.avatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-                }
+            if (response.data.require2FA) {
+                setUserId(response.data.userId);
+                setTempMobile(response.data.mobile);
+                setShowOtpInput(true);
+                toast.info("2FA Required. Sending OTP...");
 
-                login(userData, response.data.token);
-                toast.success("Login successful!");
-                setTimeout(() => {
-                    navigate("/dashboard");
-                }, 1000);
+                // Trigger OTP send
+                if (response.data.mobile) {
+                    sendOtp(response.data.mobile);
+                } else {
+                    toast.error("No mobile number registered for 2FA");
+                    setIsLoading(false);
+                }
+            } else {
+                handleLoginSuccess(response.data);
             }
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Login failed");
-=======
-        const email = e.target[0].value;
-        const password = e.target[1].value;
-
-        try {
-            const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, { email, password });
-            localStorage.setItem("userInfo", JSON.stringify(data));
-            navigate("/dashboard");
-        } catch (error) {
-            console.error("Login failed", error);
-            alert(error.response?.data?.message || "Login failed");
->>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
-        } finally {
             setIsLoading(false);
         }
     };
@@ -81,45 +148,61 @@ const Login = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
-            <ToastContainer />
+            <div id="login-recaptcha"></div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">Welcome Back</h2>
             <p className="text-gray-500 dark:text-gray-400 text-center mb-8">Sign in to access your digital wallet</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="email"
-                            placeholder="name@example.com"
-                            className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
-                            required
-                            onChange={handleInputChange('email')}
-                        />
-                    </div>
-                </div>
+                {!showOtpInput ? (
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                    required
+                                    onChange={handleInputChange('email')}
+                                />
+                            </div>
+                        </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    className="w-full pl-10 pr-10 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                    required
+                                    onChange={handleInputChange('password')}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enter OTP sent to {tempMobile?.replace(/.(?=.{4})/g, '*')}</label>
                         <input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            className="w-full pl-10 pr-10 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                            type="text"
+                            placeholder="Type OTP here"
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
                             required
-                            onChange={handleInputChange('password')}
                         />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
                     </div>
-                </div>
+                )}
 
                 <div className="flex justify-between items-center text-sm">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -130,7 +213,7 @@ const Login = () => {
                 </div>
 
                 <Button type="submit" className="w-full justify-center" disabled={isLoading}>
-                    {isLoading ? "Signing In..." : "Sign In"} <ArrowRight size={20} />
+                    {isLoading ? (showOtpInput ? "Verifying..." : "Signing In...") : (showOtpInput ? "Verify OTP" : "Sign In")} <ArrowRight size={20} />
                 </Button>
             </form>
 

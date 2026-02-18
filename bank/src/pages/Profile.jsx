@@ -1,29 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { User, Mail, Phone, FileText, Camera, Save } from "lucide-react";
+import { User, Mail, Phone, FileText, Camera, Save, Loader2 } from "lucide-react";
 import { useTransactions } from "../context/TransactionContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-toastify";
 
 const Profile = () => {
     const { user, updateUser } = useTransactions();
-    const [formData, setFormData] = useState(user || {
+    const fileInputRef = useRef(null);
+    const [formData, setFormData] = useState({
         name: '',
         email: '',
         mobile: '',
         bio: '',
-        avatar: ''
     });
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (user) {
-            setFormData(prev => ({
-                ...prev,
-                ...user,
-                // Ensure mobile maps if needed, though user should have mobile from DB
-                mobile: user.mobile || user.phone || ''
-            }));
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                mobile: user.mobile || user.phone || '',
+                bio: user.bio || '',
+            });
+            setPreviewUrl(user.avatar || null);
         }
     }, [user]);
 
@@ -31,29 +36,83 @@ const Profile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handlePhotoClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("Image must be less than 5MB");
+                return;
+            }
+            setSelectedFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setPreviewUrl(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        updateUser(formData);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        setIsSubmitting(true);
+
+        const data = new FormData();
+        data.append('name', formData.name);
+        if (selectedFile) {
+            data.append('profilePhoto', selectedFile);
+        }
+
+        const success = await updateUser(data);
+        setIsSubmitting(false);
+
+        if (success) {
+            setSelectedFile(null);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        }
     };
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Edit Profile</h1>
 
-            <div className="relative w-32 h-32 mx-auto">
+            <div className="relative w-32 h-32 mx-auto group">
                 <img
-                    src={formData.avatar}
+                    src={previewUrl || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                     alt="Profile"
-                    className="w-full h-full rounded-full ring-4 ring-white shadow-lg object-cover"
+                    className="w-full h-full rounded-full ring-4 ring-white dark:ring-gray-800 shadow-lg object-cover"
                 />
-                <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors">
+                <button
+                    type="button"
+                    onClick={handlePhotoClick}
+                    className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                >
+                    <Camera size={28} className="text-white" />
+                </button>
+                <button
+                    type="button"
+                    onClick={handlePhotoClick}
+                    className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+                >
                     <Camera size={20} />
                 </button>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                />
             </div>
+            {selectedFile && (
+                <p className="text-center text-sm text-blue-600 dark:text-blue-400 font-medium">
+                    New photo selected — click Save to apply
+                </p>
+            )}
 
-            <Card className="p-8">
+            <Card className="p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
@@ -111,8 +170,12 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    <Button type="submit" className="w-full justify-center text-lg">
-                        <Save size={20} /> Save Changes
+                    <Button type="submit" className="w-full justify-center text-lg" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                            <><Loader2 size={20} className="animate-spin" /> Saving...</>
+                        ) : (
+                            <><Save size={20} /> Save Changes</>
+                        )}
                     </Button>
                 </form>
             </Card>

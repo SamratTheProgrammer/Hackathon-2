@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import AddMoney from "./pages/AddMoney";
 import SendMoney from "./pages/SendMoney";
@@ -17,9 +18,13 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import { TransactionProvider } from "./context/TransactionContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 function App() {
   return (
     <Router>
+      <ToastContainer position="top-right" />
       <ThemeProvider>
         <TransactionProvider>
           <Routes>
@@ -31,6 +36,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
             </Route>
 
             {/* Protected Dashboard Routes */}

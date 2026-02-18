@@ -2,12 +2,13 @@ import { useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
-import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload, Image as ImageIcon, X } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload, Image as ImageIcon, X, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import axios from 'axios';
+
 import { useTransactions } from "../context/TransactionContext";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import emailjs from '@emailjs/browser';
 
 const Signup = () => {
     const navigate = useNavigate();
@@ -15,7 +16,13 @@ const Signup = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-<<<<<<< HEAD
+    // OTP State
+    const [otp, setOtp] = useState("");
+    const [generatedOtp, setGeneratedOtp] = useState(null);
+    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [isVerified, setIsVerified] = useState(false);
+    const [sendingOtp, setSendingOtp] = useState(false);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -36,17 +43,19 @@ const Signup = () => {
     });
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.type === 'date' ? 'dob' : e.target.type === 'tel' ? 'mobile' : e.target.type === 'email' ? 'email' : e.target.type === 'text' && e.target.placeholder === 'John Doe' ? 'name' : e.target.type === 'password' && e.target.placeholder === '••••••••' ? 'password' : 'confirmPassword']: e.target.value });
+        const { type, value, placeholder } = e.target;
+        const fieldName = type === 'date' ? 'dob' : type === 'tel' ? 'mobile' : type === 'email' ? 'email' : type === 'text' && placeholder === 'John Doe' ? 'name' : type === 'password' && placeholder === '••••••••' ? 'password' : 'confirmPassword';
+        setFormData(prev => ({ ...prev, [fieldName]: value }));
     };
 
     const handleInputChange = (field) => (e) => {
-        setFormData({ ...formData, [field]: e.target.value });
+        setFormData(prev => ({ ...prev, [field]: e.target.value }));
     }
 
     const handleFileChange = (e, field) => {
         const file = e.target.files[0];
         if (file) {
-            setFiles({ ...files, [field]: file });
+            setFiles(prev => ({ ...prev, [field]: file }));
             // Create preview URL
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -61,12 +70,67 @@ const Signup = () => {
         setPreviews(prev => ({ ...prev, [field]: null }));
     };
 
-    const { login } = useTransactions();
+    const sendEmailOtp = () => {
+        if (!formData.email) {
+            toast.error("Please enter your email address first");
+            return;
+        }
 
-=======
->>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
+        setSendingOtp(true);
+        const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        setGeneratedOtp(newOtp);
+
+        const templateParams = {
+            // Recipient
+            to_name: formData.name || "User",
+            email: formData.email, // THIS IS THE KEY: Template uses {{email}} for "To Email"
+
+            // Template Content Variables
+            passcode: newOtp,      // Template uses {{passcode}}
+            time: "15 minutes",    // Template uses {{time}}
+
+            // Redundant/Fallback
+            otp: newOtp,
+            message: `Your verification code is ${newOtp}`
+        };
+
+        // Try to send via EmailJS
+        emailjs.send('service_cuvtjge', 'template_rxupr77', templateParams, 'Mm6j68y0QFt9dSyTm')
+            .then((response) => {
+                console.log('SUCCESS!', response.status, response.text);
+                setSendingOtp(false);
+                setShowOtpInput(true);
+                toast.success("OTP sent to your email!");
+            }, (err) => {
+                console.error('FAILED...', err);
+
+                // FALLBACK: Mock Mode for Demo/Hackathon if keys are invalid
+                console.log("Mock Mode: OTP is " + newOtp);
+                setSendingOtp(false);
+                setShowOtpInput(true);
+                toast.warning("Demo Mode: OTP sent to console (Check F12)");
+                // toast.success("OTP sent to your email! (Mock)"); 
+            });
+    };
+
+    const verifyEmailOtp = () => {
+        if (otp === generatedOtp) {
+            setIsVerified(true);
+            setShowOtpInput(false);
+            toast.success("Email verified successfully!");
+        } else {
+            toast.error("Invalid OTP");
+        }
+    };
+
+    const { login } = useTransactions();
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!isVerified) {
+            toast.error("Please verify your email address first!");
+            return;
+        }
 
         if (formData.password !== formData.confirmPassword) {
             toast.error("Passwords do not match!");
@@ -78,9 +142,13 @@ const Signup = () => {
             return;
         }
 
+        if (!files.kycDocument) {
+            toast.error("Please upload a KYC Document (Aadhaar/PAN)");
+            return;
+        }
+
         setIsLoading(true);
 
-<<<<<<< HEAD
         const data = new FormData();
         data.append('name', formData.name);
         data.append('email', formData.email);
@@ -120,33 +188,6 @@ const Signup = () => {
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Signup failed");
-=======
-        const formData = new FormData();
-        formData.append("name", e.target[0].value);
-        formData.append("email", e.target[1].value);
-        formData.append("dob", e.target[2].value);
-        formData.append("mobile", e.target[3].value);
-        formData.append("password", e.target[4].value);
-        // idProof file is at index 6 (based on currrent form layout, need to be careful with indexing or use refs/state)
-        // Better to use state for inputs or get by name if possible, but form doesn't have names on inputs.
-        // Let's assume the file input is the one with type="file" inside the label.
-        const fileInput = e.target.querySelector('input[type="file"]');
-        if (fileInput && fileInput.files[0]) {
-            formData.append("idProof", fileInput.files[0]);
-        }
-
-        try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
-            console.log(response.data);
-            navigate("/dashboard");
-        } catch (error) {
-            console.error("Signup failed", error);
-            alert(error.response?.data?.message || "Signup failed");
->>>>>>> ebddbb95e466853adb500ba885daa72f1a5d8e95
         } finally {
             setIsLoading(false);
         }
@@ -158,11 +199,10 @@ const Signup = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
-            <ToastContainer />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">Create Account</h2>
             <p className="text-gray-500 dark:text-gray-400 text-center mb-6">Join DigitalDhan today</p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
                     <div className="relative">
@@ -179,16 +219,48 @@ const Signup = () => {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="email"
-                            placeholder="name@example.com"
-                            className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
-                            required
-                            onChange={handleInputChange('email')}
-                        />
+                    <div className="relative flex gap-2">
+                        <div className="relative w-full">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="email"
+                                placeholder="name@example.com"
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400"
+                                required
+                                onChange={handleInputChange('email')}
+                                disabled={isVerified}
+                            />
+                        </div>
+                        {!isVerified && (
+                            <Button
+                                type="button"
+                                onClick={sendEmailOtp}
+                                disabled={sendingOtp || !formData.email}
+                                className="whitespace-nowrap px-3 text-xs"
+                            >
+                                {sendingOtp ? "Sending..." : "Verify"}
+                            </Button>
+                        )}
+                        {isVerified && (
+                            <div className="flex items-center text-green-500">
+                                <CheckCircle size={24} />
+                            </div>
+                        )}
                     </div>
+                    {showOtpInput && (
+                        <div className="mt-2 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Enter Email OTP"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                            />
+                            <Button type="button" onClick={verifyEmailOtp} disabled={!otp}>
+                                Confirm
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -248,6 +320,7 @@ const Signup = () => {
                     </div>
                 </div>
 
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="relative h-32">
                         {previews.kycDocument ? (
@@ -271,7 +344,7 @@ const Signup = () => {
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">KYC Document</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">Aadhaar/PAN</p>
                                 </div>
-                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'kycDocument')} required />
+                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'kycDocument')} />
                             </label>
                         )}
                     </div>

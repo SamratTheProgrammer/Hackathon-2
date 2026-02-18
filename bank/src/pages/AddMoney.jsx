@@ -8,31 +8,57 @@ import { useTransactions } from "../context/TransactionContext";
 const AddMoney = () => {
     const { addTransaction } = useTransactions();
     const [amount, setAmount] = useState("");
-    const [selectedMethod, setSelectedMethod] = useState("upi");
+    const [selectedMethod, setSelectedMethod] = useState("");
+    const [utrNumber, setUtrNumber] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const paymentMethods = [
+        { id: 'upi', icon: Smartphone, label: 'UPI' },
+        { id: 'card', icon: CreditCard, label: 'Card' },
+        { id: 'netbanking', icon: Building2, label: 'Net Banking' },
+        { id: 'bank_transfer', icon: Building2, label: 'Bank Transfer' },
+    ];
 
     const handleAddMoney = async (e) => {
         e.preventDefault();
         setLoading(true);
+
+        // Simulate random delay for other methods
+        if (selectedMethod !== 'bank_transfer') {
+            setTimeout(async () => {
+                const success = await addTransaction({
+                    amount: parseFloat(amount),
+                    type: 'credit',
+                    to: `Added via ${paymentMethods.find(m => m.id === selectedMethod)?.label}`,
+                    status: 'Success' // Auto-approve for simulated methods? Or Pending? Let's say Success for now as it was "old" behavior likely.
+                });
+                setLoading(false);
+                if (success) {
+                    setShowSuccess(true);
+                    setAmount("");
+                    setSelectedMethod("");
+                }
+            }, 1500);
+            return;
+        }
+
+        // Bank Transfer Logic
         const success = await addTransaction({
             amount: parseFloat(amount),
             type: 'credit',
-            to: `Added via ${selectedMethod.toUpperCase()}`
+            to: `Bank Transfer (UTR: ${utrNumber})`,
+            status: 'Pending'
         });
         setLoading(false);
 
         if (success) {
             setShowSuccess(true);
             setAmount("");
+            setUtrNumber("");
+            setSelectedMethod("");
         }
     };
-
-    const methods = [
-        { id: "upi", icon: Smartphone, label: "UPI", desc: "Google Pay, PhonePe, Paytm" },
-        { id: "card", icon: CreditCard, label: "Debit Card", desc: "Visa, Mastercard, RuPay" },
-        { id: "netbanking", icon: Building2, label: "Net Banking", desc: "SBI, HDFC, ICICI, Axis" },
-    ];
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -67,36 +93,71 @@ const AddMoney = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Select Payment Mode</label>
-                        <div className="space-y-3">
-                            {methods.map((method) => (
-                                <div
-                                    key={method.id}
-                                    onClick={() => setSelectedMethod(method.id)}
-                                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedMethod === method.id
-                                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                                        : "border-gray-100 dark:border-gray-700 hover:border-blue-200"
-                                        }`}
-                                >
-                                    <div className={`p-3 rounded-full ${selectedMethod === method.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
-                                        <method.icon size={24} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className={`font-bold ${selectedMethod === method.id ? "text-blue-900 dark:text-blue-400" : "text-gray-900 dark:text-white"}`}>
-                                            {method.label}
-                                        </h3>
-                                        <p className="text-sm text-gray-500">{method.desc}</p>
-                                    </div>
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === method.id ? "border-blue-600" : "border-gray-300"}`}>
-                                        {selectedMethod === method.id && <div className="w-3 h-3 bg-blue-600 rounded-full" />}
-                                    </div>
-                                </div>
-                            ))}
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Select Payment Method</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            {paymentMethods.map((method) => {
+                                const Icon = method.icon;
+                                return (
+                                    <button
+                                        key={method.id}
+                                        type="button"
+                                        onClick={() => setSelectedMethod(method.id)}
+                                        className={`p-4 rounded-xl border flex flex-col items-center gap-3 transition-all ${selectedMethod === method.id
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                                                : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 text-gray-600 dark:text-gray-400'
+                                            }`}
+                                    >
+                                        <Icon size={24} />
+                                        <span className="font-medium">{method.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    <Button type="submit" className="w-full justify-center text-lg py-4" disabled={!amount || loading}>
-                        {loading ? "Processing..." : `Proceed to Add ₹${amount || "0"}`}
+                    {selectedMethod === 'bank_transfer' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <Building2 className="text-blue-600 dark:text-blue-400" />
+                                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Bank Transfer Details</h3>
+                                </div>
+                                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                    <div className="flex justify-between">
+                                        <span>Bank Name:</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">Digital Bank</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Account Name:</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">DigitalDhan Solutions</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Account Number:</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">123456789012</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>IFSC Code:</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">DIGI0001234</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Transaction ID / UTR Number</label>
+                                <input
+                                    type="text"
+                                    value={utrNumber}
+                                    onChange={(e) => setUtrNumber(e.target.value)}
+                                    placeholder="Enter 12-digit UTR number"
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Please enter the UTR number from your banking app after making the transfer.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <Button type="submit" className="w-full justify-center text-lg py-4" disabled={!amount || !selectedMethod || (selectedMethod === 'bank_transfer' && !utrNumber) || loading}>
+                        {loading ? "Processing..." : (selectedMethod === 'bank_transfer' ? "Submit Payment Proof" : "Proceed to Pay")}
                     </Button>
                 </form>
             </Card>

@@ -17,7 +17,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     return (
         <header className={cn(
             "sticky top-0 z-30 flex h-16 items-center justify-between border-b border-neutral-muted/10 bg-white/80 px-6 backdrop-blur-md transition-all duration-300 dark:bg-dark-bg/80 dark:border-white/5",
-            isSidebarOpen ? "md:ml-64" : "md:ml-20"
+            isSidebarOpen ? "md:ml-64 w-[calc(100%-16rem)]" : "md:ml-20 w-[calc(100%-5rem)]"
         )}>
             <div className="flex items-center gap-4">
                 <Button

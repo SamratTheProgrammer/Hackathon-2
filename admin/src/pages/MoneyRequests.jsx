@@ -68,8 +68,8 @@ const MoneyRequests = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Money Requests</h1>
-                    <p className="text-neutral-muted">Approve or reject money addition requests.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Offline Payment Approvals</h1>
+                    <p className="text-neutral-muted">Approve or reject offline bank transfers (UTR verification).</p>
                 </div>
             </div>
 
@@ -90,7 +90,7 @@ const MoneyRequests = () => {
                                     <tr>
                                         <th className="px-4 py-3">User</th>
                                         <th className="px-4 py-3">Amount</th>
-                                        <th className="px-4 py-3">Method</th>
+                                        <th className="px-4 py-3">Reference / UTR</th>
                                         <th className="px-4 py-3">Date</th>
                                         <th className="px-4 py-3 text-right">Actions</th>
                                     </tr>

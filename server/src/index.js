@@ -1,10 +1,10 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth.routes');
 const path = require('path');
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +23,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/rewards', require('./routes/reward.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/security', require('./routes/security.routes'));
 
 app.get('/', (req, res) => {
     res.send('Bank Backend is running');
