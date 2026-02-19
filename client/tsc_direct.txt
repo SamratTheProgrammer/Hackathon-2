@@ -1,0 +1,2 @@
+﻿src/screens/Receive.tsx(112,18): error TS2741: Property 'onPress' is missing in type '{ title: string; variant: "secondary"; icon: Element; className: string; }' but required in type 'ButtonProps'.
+src/screens/Receive.tsx(118,18): error TS2741: Property 'onPress' is missing in type '{ title: string; variant: "secondary"; icon: Element; className: string; }' but required in type 'ButtonProps'.

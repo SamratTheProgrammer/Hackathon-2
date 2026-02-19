@@ -1,0 +1,9 @@
+﻿src/screens/Activity.tsx(4,31): error TS2305: Module '"../components/ui"' has no exported member 'InputField'.
+src/screens/Home.tsx(7,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?
+src/screens/Onboarding.tsx(4,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?
+src/screens/Onboarding.tsx(4,30): error TS2305: Module '"../components/ui"' has no exported member 'InputField'.
+src/screens/Pay.tsx(4,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?
+src/screens/Pay.tsx(4,51): error TS2305: Module '"../components/ui"' has no exported member 'InputField'.
+src/screens/Profile.tsx(4,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?
+src/screens/Receive.tsx(4,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?
+src/screens/Wallet.tsx(4,10): error TS2724: '"../components/ui"' has no exported member named 'UiButton'. Did you mean 'Button'?

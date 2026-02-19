@@ -1,0 +1,5 @@
+﻿src/screens/Activity.tsx(4,31): error TS2305: Module '"../components/ui"' has no exported member 'Input'.
+src/screens/Onboarding.tsx(4,18): error TS2305: Module '"../components/ui"' has no exported member 'Input'.
+src/screens/Onboarding.tsx(61,21): error TS2322: Type '{ title: string; onPress: () => Promise<void>; loading: boolean; disabled: boolean; className: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'loading' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+src/screens/Pay.tsx(4,39): error TS2305: Module '"../components/ui"' has no exported member 'Input'.
