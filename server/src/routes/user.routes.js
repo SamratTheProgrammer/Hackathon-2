@@ -21,6 +21,7 @@ const authenticate = (req, res, next) => {
 // Get current user details
 router.get('/me', authenticate, async (req, res) => {
     try {
+        console.log('GET /me called for userId:', req.userId);
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
             select: {
@@ -34,7 +35,8 @@ router.get('/me', authenticate, async (req, res) => {
                 points: true,
                 accountNumber: true,
                 role: true,
-                twoFactorEnabled: true
+                twoFactorEnabled: true,
+                referralCode: true
             }
         });
         if (!user) return res.status(404).json({ message: 'User not found' });

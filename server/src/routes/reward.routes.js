@@ -10,6 +10,99 @@ const prisma = new PrismaClient();
 // --- Rewards ---
 
 // Create a new Reward
+const jwt = require('jsonwebtoken');
+
+// Middleware to authenticate user
+const authenticate = (req, res, next) => {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'Authentication required' });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.userId = decoded.userId;
+        next();
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid token' });
+    }
+};
+
+// --- Rewards ---
+
+// Redeem Points
+router.post('/redeem', authenticate, async (req, res) => {
+    try {
+        const result = await prisma.$transaction(async (prismaTx) => {
+            const user = await prismaTx.user.findUnique({ where: { id: req.userId } });
+
+            if (!user || user.points <= 0) {
+                throw new Error('No points to redeem');
+            }
+
+            const pointsToRedeem = user.points;
+            if (pointsToRedeem < 10) { // Minimum threshold? Let's say 10 points = 1 Rupee, so maybe min 10?
+                throw new Error('Minimum 10 points required to redeem');
+            }
+
+            const redemptionAmount = Math.floor(pointsToRedeem / 10);
+
+            if (redemptionAmount <= 0) {
+                throw new Error('Insufficient points for redemption (Min 10)');
+            }
+
+            const remainingPoints = pointsToRedeem % 10; // Keep remainder? Or just zero out?
+            // "Redeem All" usually implies taking everything.
+            // If 15 points -> 1 Rupee. Remaining 5 points?
+            // Let's keep the remainder.
+            const pointsDeducted = user.points - remainingPoints;
+
+            // Update User
+            await prismaTx.user.update({
+                where: { id: req.userId },
+                data: {
+                    points: remainingPoints,
+                    balance: { increment: redemptionAmount }
+                }
+            });
+
+            // Create Transaction Record
+            const transaction = await prismaTx.transaction.create({
+                data: {
+                    userId: req.userId,
+                    amount: redemptionAmount,
+                    type: 'credit',
+                    to: 'Reward Redemption',
+                    status: 'Success'
+                }
+            });
+
+            // Create Notification
+            await prismaTx.notification.create({
+                data: {
+                    userId: req.userId,
+                    title: "Rewards Redeemed",
+                    message: `You redeemed ${pointsDeducted} points for ₹${redemptionAmount}.`,
+                    type: "reward",
+                    relatedId: transaction.id
+                }
+            });
+
+            return { redemptionAmount, pointsLeft: remainingPoints, transaction };
+        });
+
+        res.json({
+            message: 'Redemption successful',
+            amount: result.redemptionAmount,
+            points: result.pointsLeft,
+            transaction: result.transaction
+        });
+
+    } catch (error) {
+        console.error("Redemption error:", error);
+        res.status(400).json({ message: error.message || 'Redemption failed' });
+    }
+});
+
+// Create a new Reward
 router.post('/', async (req, res) => {
     try {
         const { title, description, points, image } = req.body;

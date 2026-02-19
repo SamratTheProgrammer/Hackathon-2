@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { User, Mail, Phone, FileText, Camera, Save, Loader2 } from "lucide-react";
+import { User, Mail, Phone, FileText, Camera, Save, Loader2, Share2 } from "lucide-react";
 import { useTransactions } from "../context/TransactionContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -111,6 +111,62 @@ const Profile = () => {
                     New photo selected — click Save to apply
                 </p>
             )}
+
+            {/* Referral Code Section */}
+            <Card className="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-none relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"></div>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold mb-1">Invite & Earn</h3>
+                        <p className="text-blue-100 text-sm">Share your code and earn ₹50 for every friend who joins!</p>
+                    </div>
+                </div>
+                <div className="mt-4 bg-white/20 backdrop-blur-md rounded-xl p-3 flex items-center justify-between border border-white/20 relative z-10">
+                    <div className="flex flex-col">
+                        <span className="text-xs text-blue-100">Your Referral Code</span>
+                        <span className="font-mono text-xl font-bold tracking-wider">{user?.referralCode || 'Generate...'}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                if (user?.referralCode) {
+                                    navigator.clipboard.writeText(user.referralCode);
+                                    toast.success("Code copied!");
+                                }
+                            }}
+                            className="p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors font-medium text-sm border border-white/10"
+                        >
+                            Copy Code
+                        </button>
+                        <button
+                            onClick={async () => {
+                                if (user?.referralCode) {
+                                    const shareUrl = `${window.location.origin}/signup?referralCode=${user.referralCode}`;
+                                    const shareData = {
+                                        title: 'Join DigitalDhan!',
+                                        text: `Use my referral code ${user.referralCode} to join DigitalDhan and earn ₹20!`,
+                                        url: shareUrl
+                                    };
+
+                                    if (navigator.share) {
+                                        try {
+                                            await navigator.share(shareData);
+                                        } catch (err) {
+                                            console.error("Share failed:", err);
+                                        }
+                                    } else {
+                                        navigator.clipboard.writeText(shareUrl);
+                                        toast.success("Link copied to clipboard!");
+                                    }
+                                }
+                            }}
+                            className="p-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-bold text-sm flex items-center gap-2"
+                        >
+                            <Share2 size={16} /> Share Link
+                        </button>
+                    </div>
+                </div>
+            </Card>
 
             <Card className="p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">

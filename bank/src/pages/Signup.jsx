@@ -1,8 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../components/Button";
-import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload, Image as ImageIcon, X, CheckCircle } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, Calendar, Upload, Image as ImageIcon, X, CheckCircle, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { useTransactions } from "../context/TransactionContext";
@@ -12,6 +12,7 @@ import emailjs from '@emailjs/browser';
 
 const Signup = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -29,7 +30,8 @@ const Signup = () => {
         mobile: '',
         dob: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        referralCode: searchParams.get('referralCode') || ''
     });
 
     const [files, setFiles] = useState({
@@ -155,6 +157,7 @@ const Signup = () => {
         data.append('mobile', formData.mobile);
         data.append('dob', formData.dob);
         data.append('password', formData.password);
+        if (formData.referralCode) data.append('referralCode', formData.referralCode);
         if (files.kycDocument) data.append('kycDocument', files.kycDocument);
         if (files.profilePhoto) data.append('profilePhoto', files.profilePhoto);
 
@@ -261,6 +264,19 @@ const Signup = () => {
                             </Button>
                         </div>
                     )}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Referral Code (Optional)</label>
+                    <div className="relative">
+                        <Gift className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="e.g. JOHN1234"
+                            className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 uppercase"
+                            onChange={handleInputChange('referralCode')}
+                        />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

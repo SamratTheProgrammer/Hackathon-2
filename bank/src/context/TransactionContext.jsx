@@ -57,7 +57,7 @@ export const TransactionProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
         } catch (error) {
             console.error("Error fetching user data", error);
-            if (error.response && error.response.status === 401) {
+            if (error.response && (error.response.status === 401 || error.response.status === 404)) {
                 logout();
             }
         }

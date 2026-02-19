@@ -1,26 +1,26 @@
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Card from "../components/Card";
 import Button from "../components/Button";
 import { Gift, Award, TrendingUp, Loader2 } from "lucide-react";
 import { useTransactions } from "../context/TransactionContext";
 import { useEffect, useState } from "react";
 import axios from 'axios';
+import Modal from "../components/Modal";
 
 const Rewards = () => {
     const { user, transactions: allTransactions, token } = useTransactions();
     const [cashbackHistory, setCashbackHistory] = useState([]);
     const [stats, setStats] = useState({ totalCashback: 0 });
+    const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
+    const [isRedeeming, setIsRedeeming] = useState(false);
 
     useEffect(() => {
         if (allTransactions) {
             const cashbackTx = allTransactions.filter(tx =>
                 tx.type === 'credit' &&
-                tx.to === 'Cashback Reward' // Or however we identify callback transactions
-                // Actually in fetchTransactions we mapped 'to' field. 
-                // In backend create: to: 'Cashback Reward'
+                tx.to === 'Cashback Reward'
             );
-
-            // If the standard fetchTransactions doesn't cover "Cashback Reward" naming perfectly or if we need more specifics,
-            // we can rely on the fact that we just created them with text 'Cashback Reward'
 
             const earned = cashbackTx.reduce((acc, tx) => acc + parseFloat(tx.amount), 0);
 
@@ -29,12 +29,43 @@ const Rewards = () => {
         }
     }, [allTransactions]);
 
+    const handleRedeemClick = () => {
+        if (!user || user.points < 10) {
+            toast.error("You need at least 10 points to redeem!");
+            return;
+        }
+        setIsRedeemModalOpen(true);
+    };
+
+    const confirmRedeem = async () => {
+        setIsRedeeming(true);
+        try {
+            const response = await axios.post(
+                `${import.meta.env.VITE_API_URL}/rewards/redeem`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            setIsRedeemModalOpen(false);
+            toast.success(`Success! Redeemed ₹${response.data.amount}`);
+
+            // Reload after a short delay to let the toast be seen
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Redemption failed");
+            setIsRedeeming(false);
+        }
+    };
+
     if (!user) {
         return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pb-20">
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -44,11 +75,47 @@ const Rewards = () => {
                         <p className="text-sm opacity-80">Value: ₹{((user.points || 0) / 10).toFixed(2)}</p>
                     </div>
                     <div className="flex gap-4">
-                        <Button className="bg-white text-purple-700 hover:bg-purple-50 border-none">Redeem Now</Button>
+                        <Button
+                            onClick={handleRedeemClick}
+                            className="bg-white text-purple-700 hover:bg-purple-50 border-none"
+                        >
+                            Redeem Now
+                        </Button>
                     </div>
                 </div>
             </div>
 
+            <Modal
+                isOpen={isRedeemModalOpen}
+                onClose={() => setIsRedeemModalOpen(false)}
+                title="Redeem Points"
+            >
+                <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-300">
+                        You are about to redeem <strong>{user.points} points</strong> for <strong>₹{Math.floor(user.points / 10)}</strong>.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        The money will be added to your account balance immediately.
+                    </p>
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsRedeemModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={confirmRedeem}
+                            disabled={isRedeeming}
+                        >
+                            {isRedeeming ? "Redeeming..." : "Confirm Redemption"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Existing Rewards List */}
             <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Your Rewards</h2>
                 {cashbackHistory.length > 0 ? (
@@ -82,8 +149,35 @@ const Rewards = () => {
                     </div>
                     <div>
                         <h3 className="text-lg font-bold mb-1 dark:text-white">Referral Bonus</h3>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">Earn ₹100 for every friend you invite.</p>
-                        <button className="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">Invite Friends</button>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">Earn ₹50 for every friend you invite.</p>
+                        <button
+                            onClick={async () => {
+                                if (user?.referralCode) {
+                                    const shareUrl = `${window.location.origin}/signup?referralCode=${user.referralCode}`;
+                                    const shareData = {
+                                        title: 'Join DigitalDhan!',
+                                        text: `Use my referral code ${user.referralCode} to join DigitalDhan and earn ₹20!`,
+                                        url: shareUrl
+                                    };
+
+                                    if (navigator.share) {
+                                        try {
+                                            await navigator.share(shareData);
+                                        } catch (err) {
+                                            console.error("Share failed:", err);
+                                        }
+                                    } else {
+                                        navigator.clipboard.writeText(shareUrl);
+                                        toast.success("Link copied to clipboard!");
+                                    }
+                                } else {
+                                    toast.error("Referral code not available.");
+                                }
+                            }}
+                            className="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline flex items-center gap-1"
+                        >
+                            Invite Friends
+                        </button>
                     </div>
                 </Card>
                 <Card className="p-6 flex items-center gap-6 dark:bg-gray-800">

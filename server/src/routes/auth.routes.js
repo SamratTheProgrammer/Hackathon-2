@@ -27,25 +27,23 @@ router.post('/signup', (req, res) => {
         }
 
         try {
-            const { name, email, password, mobile, dob } = req.body;
+            const { name, email, password, mobile, dob, referralCode } = req.body;
 
             // Process Profile Photo (Store as Base64)
             let profilePhotoBase64 = null;
-            if (req.files['profilePhoto']) {
+            if (req.files && req.files['profilePhoto']) {
                 const filePath = req.files['profilePhoto'][0].path;
                 const fileBuffer = fs.readFileSync(filePath);
                 profilePhotoBase64 = `data:${req.files['profilePhoto'][0].mimetype};base64,${fileBuffer.toString('base64')}`;
-                // Delete file after reading
                 fs.unlinkSync(filePath);
             }
 
             // Process KYC Document (Store as Base64)
             let kycDocumentBase64 = null;
-            if (req.files['kycDocument']) {
+            if (req.files && req.files['kycDocument']) {
                 const filePath = req.files['kycDocument'][0].path;
                 const fileBuffer = fs.readFileSync(filePath);
                 kycDocumentBase64 = `data:${req.files['kycDocument'][0].mimetype};base64,${fileBuffer.toString('base64')}`;
-                // Delete file after reading
                 fs.unlinkSync(filePath);
             }
 
@@ -62,22 +60,89 @@ router.post('/signup', (req, res) => {
             const hashedPassword = await bcrypt.hash(password, 10);
             const accountNumber = Math.floor(100000000000 + Math.random() * 900000000000).toString();
 
-            const user = await prisma.user.create({
-                data: {
-                    name,
-                    email,
-                    password: hashedPassword,
-                    mobile,
-                    dob: new Date(dob),
-                    kycDocument: kycDocumentBase64,
-                    profilePhoto: profilePhotoBase64,
-                    accountNumber
+            // Generate Referral Code: First 4 chars of name + 4 random digits
+            const namePrefix = name.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'USER');
+            const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString();
+            const newReferralCode = `${namePrefix}${randomSuffix}`;
+
+            // Check Referral Code
+            let referrer = null;
+            if (referralCode) {
+                referrer = await prisma.user.findUnique({ where: { referralCode } });
+            }
+
+            // Create User and handle bonuses in transaction
+            const result = await prisma.$transaction(async (prismaTx) => {
+                const newUser = await prismaTx.user.create({
+                    data: {
+                        name,
+                        email,
+                        password: hashedPassword,
+                        mobile,
+                        dob: new Date(dob),
+                        kycDocument: kycDocumentBase64,
+                        profilePhoto: profilePhotoBase64,
+                        accountNumber,
+                        referralCode: newReferralCode,
+                        referredById: referrer ? referrer.id : null,
+                        balance: referrer ? 20 : 0 // Bonus for new user
+                    }
+                });
+
+                if (referrer) {
+                    // Bonus for Referrer
+                    await prismaTx.user.update({
+                        where: { id: referrer.id },
+                        data: { balance: { increment: 50 } }
+                    });
+
+                    // Transaction Records
+                    await prismaTx.transaction.create({
+                        data: {
+                            userId: referrer.id,
+                            amount: 50,
+                            type: 'credit',
+                            to: 'Referral Bonus',
+                            status: 'Success'
+                        }
+                    });
+
+                    await prismaTx.notification.create({
+                        data: {
+                            userId: referrer.id,
+                            title: "Referral Bonus Earned!",
+                            message: `You earned ₹50 for referring ${name}.`,
+                            type: "reward"
+                        }
+                    });
+
+                    // Bonus for New User (Transaction Record)
+                    await prismaTx.transaction.create({
+                        data: {
+                            userId: newUser.id,
+                            amount: 20,
+                            type: 'credit',
+                            to: 'Signup Bonus (Referral)',
+                            status: 'Success'
+                        }
+                    });
+
+                    await prismaTx.notification.create({
+                        data: {
+                            userId: newUser.id,
+                            title: "Welcome Bonus!",
+                            message: `You earned ₹20 for using a referral code.`,
+                            type: "reward"
+                        }
+                    });
                 }
+
+                return newUser;
             });
 
-            const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign({ userId: result.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-            res.status(201).json({ message: 'User created successfully', token, user });
+            res.status(201).json({ message: 'User created successfully', token, user: result });
         } catch (error) {
             console.error('Signup Error:', error);
             res.status(500).json({ message: error.message || 'Internal server error', error: error.message });
@@ -102,27 +167,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Check for 2FA
-        if (user.twoFactorEnabled) {
-            // Return specific code to prompt frontend for OTP
-            // We return the mobile number masked for UI display
-            const mobile = user.mobile;
-            const maskedMobile = mobile ? mobile.replace(/.(?=.{4})/g, '*') : null;
-            return res.status(200).json({
-                require2FA: true,
-                message: 'Two-Factor Authentication required',
-                mobile: user.mobile, // Frontend needs full number for Firebase invisible captcha? No, usually frontend has it or re-asks. 
-                // Actually Firebase needs the full number. Sending it to frontend is okay if HTTPS.
-                // But safer to mask it and ask user to confirm?
-                // For this implementation, let's send it so frontend can auto-trigger or pre-fill.
-                // Wait, if I just send the mobile, anyone with password can get the mobile number.
-                // Let's send masked and rely on user input? 
-                // Or better: The user should have the phone. 
-                // Let's send the mobile number for simplicity in this hackathon context.
-                mobile: user.mobile,
-                userId: user.id
-            });
-        }
+
 
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
