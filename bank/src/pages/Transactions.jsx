@@ -1,10 +1,12 @@
 import { useState } from "react";
 import Card from "../components/Card";
 import { Download, Search, Filter } from "lucide-react";
+import Modal from "../components/Modal";
 import { useTransactions } from "../context/TransactionContext";
 
 const Transactions = () => {
     const { transactions } = useTransactions();
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -52,7 +54,7 @@ const Transactions = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                             {transactions.map((tx) => (
-                                <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                <tr key={tx.id} onClick={() => setSelectedTransaction(tx)} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer">
                                     <td className="px-6 py-4">
                                         <p className="font-bold text-gray-900 dark:text-white text-sm">{tx.to}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">ID: #TXN{202600 + tx.id}</p>
@@ -74,6 +76,60 @@ const Transactions = () => {
                     </table>
                 </div>
             </Card>
+
+            <Modal
+                isOpen={!!selectedTransaction}
+                onClose={() => setSelectedTransaction(null)}
+                title="Transaction Details"
+            >
+                {selectedTransaction && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500 dark:text-gray-400">Transaction ID</span>
+                            <span className="font-mono font-medium text-gray-900 dark:text-white">#TXN{202600 + selectedTransaction.id}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500 dark:text-gray-400">Date</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{selectedTransaction.date}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500 dark:text-gray-400">Status</span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTransaction.status)}`}>
+                                {selectedTransaction.status}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500 dark:text-gray-400">Amount</span>
+                            <span className={`font-bold ${selectedTransaction.type === 'credit' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
+                                {selectedTransaction.type === 'credit' ? '+' : ''} {Math.abs(selectedTransaction.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                            </span>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div className="flex justify-between items-start">
+                                <span className="text-gray-500 dark:text-gray-400">To/From</span>
+                                <span className="font-bold text-gray-900 dark:text-white text-right">{selectedTransaction.to}</span>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <span className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Remarks</span>
+                            <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm">
+                                {selectedTransaction.remarks || "No remarks provided"}
+                            </p>
+                        </div>
+
+                        {selectedTransaction.status === 'Failed' && selectedTransaction.rejectionReason && (
+                            <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <span className="block text-sm text-red-500 mb-1">Rejection Reason</span>
+                                <p className="text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-sm">
+                                    {selectedTransaction.rejectionReason}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };

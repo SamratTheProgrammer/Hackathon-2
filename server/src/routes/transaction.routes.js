@@ -174,6 +174,7 @@ router.post('/', authenticate, async (req, res) => {
                         amount: parseFloat(amount),
                         type: 'debit',
                         to: receiver.name || receiverMobile,
+                        remarks: req.body.remarks,
                         status: 'Success'
                     }
                 });
@@ -185,6 +186,7 @@ router.post('/', authenticate, async (req, res) => {
                         amount: parseFloat(amount),
                         type: 'credit',
                         to: sender.name || 'P2P Transfer',
+                        remarks: req.body.remarks,
                         status: 'Success'
                     }
                 });
@@ -229,6 +231,7 @@ router.post('/', authenticate, async (req, res) => {
                     amount: parseFloat(amount),
                     type,
                     to: to || 'Self',
+                    remarks: req.body.remarks,
                     status: txStatus
                 }
             });

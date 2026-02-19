@@ -76,6 +76,7 @@ export const TransactionProvider = ({ children }) => {
                 amount: tx.type === 'debit' ? -tx.amount : tx.amount,
                 status: tx.status,
                 type: tx.type,
+                remarks: tx.remarks,
                 rejectionReason: tx.rejectionReason
             }));
             setTransactions(formattedTransactions);
@@ -128,6 +129,7 @@ export const TransactionProvider = ({ children }) => {
                 type,
                 to: transaction.to,
                 status: transaction.status || 'Success',
+                remarks: transaction.remarks,
                 receiverMobile: transaction.receiverMobile
             }, {
                 headers: { Authorization: `Bearer ${token}` }

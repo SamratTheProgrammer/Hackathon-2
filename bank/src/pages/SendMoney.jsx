@@ -12,6 +12,7 @@ const SendMoney = () => {
     const [sendMode, setSendMode] = useState("mobile");
     const [mobileNumber, setMobileNumber] = useState("");
     const [amount, setAmount] = useState("");
+    const [remarks, setRemarks] = useState("");
     const [status, setStatus] = useState("idle"); // idle, success, pending, failed
     const [accountNumber, setAccountNumber] = useState("");
     const { addTransaction, token } = useTransactions();
@@ -73,6 +74,7 @@ const SendMoney = () => {
             amount: Number(amount),
             type: "debit",
             status: "Success",
+            remarks: remarks,
             receiverMobile: recipient.mobile // Critical for Backend P2P Logic
         });
 
@@ -80,6 +82,7 @@ const SendMoney = () => {
             setSuccessDetails({ amount: amount, recipientName: sendMode === 'mobile' ? recipient?.name : 'Bank Account' });
             setStatus("success");
             setAmount("");
+            setRemarks("");
             setMobileNumber("");
             setAccountNumber("");
             setRecipient(null);
@@ -215,6 +218,8 @@ const SendMoney = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Remark (Optional)</label>
                         <input
                             type="text"
+                            value={remarks}
+                            onChange={(e) => setRemarks(e.target.value)}
                             placeholder="Dinner bill, Rent, etc."
                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"
                         />
