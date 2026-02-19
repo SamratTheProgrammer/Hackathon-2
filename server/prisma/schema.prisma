@@ -52,6 +52,7 @@ model Transaction {
   status    String   @default("Success") // Success, Pending, Failed
   date      DateTime @default(now())
   to        String?  // Recipient name or description
+  remarks   String?  // Transaction remarks
   rejectionReason String?
   userId    String
   user      User     @relation(fields: [userId], references: [id])
