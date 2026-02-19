@@ -1,11 +1,13 @@
 import Button from "../components/Button";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTransactions } from "../context/TransactionContext";
 
 const Hero = () => {
     const { user } = useTransactions();
+    const navigate = useNavigate();
+
     return (
         <section className="relative pt-32 pb-20 md:pb-32 overflow-hidden">
             {/* Background Gradients */}
@@ -41,17 +43,21 @@ const Hero = () => {
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                         {user ? (
-                            <Link to="/dashboard">
-                                <Button size="lg" className="shadow-xl shadow-blue-500/20">
-                                    Go to Dashboard <ArrowRight className="ml-2" size={20} />
-                                </Button>
-                            </Link>
+                            <Button
+                                size="lg"
+                                className="shadow-xl shadow-blue-500/20"
+                                onClick={() => navigate('/dashboard')}
+                            >
+                                Go to Dashboard <ArrowRight className="ml-2" size={20} />
+                            </Button>
                         ) : (
-                            <Link to="/signup">
-                                <Button size="lg" className="shadow-xl shadow-blue-500/20">
-                                    Create Free Account <ArrowRight className="ml-2" size={20} />
-                                </Button>
-                            </Link>
+                            <Button
+                                size="lg"
+                                className="shadow-xl shadow-blue-500/20"
+                                onClick={() => navigate('/signup')}
+                            >
+                                Create Free Account <ArrowRight className="ml-2" size={20} />
+                            </Button>
                         )}
                         <Button variant="outline" size="lg">
                             Watch Demo

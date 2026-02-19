@@ -64,6 +64,7 @@ const Dashboard = () => {
         totalVolume: 0,
         pendingRequests: 0
     });
+    const [revenueData, setRevenueData] = useState([]);
     const [recentTransactions, setRecentTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const API_URL = 'http://localhost:5000/api';
@@ -80,6 +81,9 @@ const Dashboard = () => {
             ]);
 
             setStats(statsRes.data);
+            if (statsRes.data.chartData) {
+                setRevenueData(statsRes.data.chartData);
+            }
             setRecentTransactions(txRes.data.slice(0, 5)); // Get top 5
         } catch (error) {
             console.error("Error fetching dashboard data", error);
@@ -141,7 +145,7 @@ const Dashboard = () => {
                     <CardContent className="pl-2">
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={revenueData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
@@ -175,8 +179,8 @@ const Dashboard = () => {
                                     <div key={tx.id} className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className={`h-10 w-10 rounded-full flex items-center justify-center text-lg font-bold ${tx.type === 'credit'
-                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
-                                                    : 'bg-red-100 text-red-600 dark:bg-red-900/30'
+                                                ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
+                                                : 'bg-red-100 text-red-600 dark:bg-red-900/30'
                                                 }`}>
                                                 {tx.type === 'credit' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
                                             </div>
@@ -191,7 +195,7 @@ const Dashboard = () => {
                                                 {tx.type === 'credit' ? '+' : '-'}₹{tx.amount}
                                             </span>
                                             <span className={`text-xs ${tx.status === 'Success' ? 'text-green-500' :
-                                                    tx.status === 'Pending' ? 'text-yellow-500' : 'text-red-500'
+                                                tx.status === 'Pending' ? 'text-yellow-500' : 'text-red-500'
                                                 }`}>{tx.status}</span>
                                         </div>
                                     </div>

@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
 
-const Button = ({ children, variant = "primary", className, ...props }) => {
-    const baseStyles = "px-6 py-3 rounded-full font-semibold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer";
+const Button = ({ children, variant = "primary", size = "md", className, ...props }) => {
+    const baseStyles = "rounded-full font-semibold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer";
 
     const variants = {
         primary: "bg-gradient-to-r from-blue-600 to-green-500 text-white shadow-lg hover:shadow-xl hover:scale-105",
@@ -11,10 +11,16 @@ const Button = ({ children, variant = "primary", className, ...props }) => {
         ghost: "bg-transparent text-gray-600 hover:text-blue-600 hover:bg-blue-50/50"
     };
 
+    const sizes = {
+        sm: "px-4 py-2 text-sm",
+        md: "px-6 py-3",
+        lg: "px-8 py-4 text-lg"
+    };
+
     return (
         <motion.button
             whileTap={{ scale: 0.95 }}
-            className={cn(baseStyles, variants[variant], className)}
+            className={cn(baseStyles, variants[variant], sizes[size], className)}
             {...props}
         >
             {children}

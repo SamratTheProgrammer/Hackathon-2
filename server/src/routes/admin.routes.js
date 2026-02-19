@@ -14,31 +14,67 @@ router.get('/stats', async (req, res) => {
     try {
         const totalUsers = await prisma.user.count();
         const totalTransactions = await prisma.transaction.count();
-        const pendingKYC = 0; // Placeholder until KYC is implemented
 
-        // Calculate total revenue (Sum of all successful credit transactions? Or logic specific to business?)
-        // For now, let's just show Total Volume Transacted
+        // Total Volume
         const aggregations = await prisma.transaction.aggregate({
-            _sum: {
-                amount: true,
-            },
-            where: {
-                status: 'Success'
-            }
+            _sum: { amount: true },
+            where: { status: 'Success' }
         });
         const totalVolume = aggregations._sum.amount || 0;
 
         const pendingRequests = await prisma.transaction.count({
+            where: { status: 'Pending' }
+        });
+
+        // Revenue Analytics (Monthly Volume)
+        // Fetch successful transactions from the last 6 months
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const recentTx = await prisma.transaction.findMany({
             where: {
-                status: 'Pending'
+                status: 'Success',
+                date: { gte: sixMonthsAgo }
+            },
+            select: {
+                date: true,
+                amount: true
             }
         });
+
+        // Group by Month
+        const monthlyData = {};
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Initialize last 6 months (or current year) 
+        // Let's just create a map for the fetched data
+        recentTx.forEach(tx => {
+            const date = new Date(tx.date);
+            const monthName = months[date.getMonth()];
+            if (!monthlyData[monthName]) monthlyData[monthName] = 0;
+            monthlyData[monthName] += tx.amount;
+        });
+
+        // Format for Recharts (e.g., [{name: 'Jan', value: 100}, ...])
+        // We want to ensure specific order? Or just return what we have? 
+        // Dashboard expects specific order usually. Let's return the last 7 months derived from current date.
+        const chartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const monthName = months[d.getMonth()];
+            chartData.push({
+                name: monthName,
+                value: monthlyData[monthName] || 0
+            });
+        }
 
         res.json({
             totalUsers,
             totalTransactions,
             totalVolume,
-            pendingRequests
+            pendingRequests,
+            chartData
         });
     } catch (error) {
         console.error("Error fetching stats:", error);
