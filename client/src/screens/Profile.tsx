@@ -3,8 +3,9 @@ import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, TextInput, Mod
 import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper } from '../components/ui';
-import { User, Settings, Bell, Shield, CircleHelp, LogOut, ChevronRight, Edit3, X, Save, Mail, Phone as PhoneIcon } from 'lucide-react-native';
+import { User, Settings, Bell, Shield, CircleHelp, LogOut, ChevronRight, Edit3, X, Save, Mail, Phone as PhoneIcon, Globe } from 'lucide-react-native';
 import { useTheme } from '../services/ThemeContext';
+import { useLanguage } from '../services/LanguageContext';
 
 const SettingItem = ({ icon, label, value, onPress, sublabel }: { icon: any, label: string, value?: boolean | string, onPress?: () => void, sublabel?: string }) => (
     <TouchableOpacity
@@ -34,9 +35,11 @@ export const Profile = () => {
     const [biometrics, setBiometrics] = useState(false);
     const [notifications, setNotifications] = useState(true);
     const { theme, setTheme } = useTheme();
+    const { language, setLanguage, t } = useLanguage();
 
     // Edit profile state
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showLangModal, setShowLangModal] = useState(false);
     const [editName, setEditName] = useState(user?.name || '');
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -116,7 +119,7 @@ export const Profile = () => {
                         />
                     </View>
 
-                    <Text className="px-1 py-3 text-secondary font-bold text-xs uppercase tracking-wider">Preferences</Text>
+                    <Text className="px-1 py-3 text-secondary font-bold text-xs uppercase tracking-wider">{t('preferences')}</Text>
                     <View className="bg-white dark:bg-neutral-800 rounded-2xl overflow-hidden border border-neutral-border dark:border-neutral-700 shadow-sm mb-6">
                         <SettingItem
                             icon={<Bell size={20} color="#64748B" />}
@@ -125,10 +128,10 @@ export const Profile = () => {
                             onPress={() => setNotifications(!notifications)}
                         />
                         <SettingItem
-                            icon={<Settings size={20} color="#64748B" />}
-                            label="Language"
-                            value="English"
-                            onPress={() => { }}
+                            icon={<Globe size={20} color="#64748B" />}
+                            label={t('language')}
+                            value={language === 'en' ? 'English' : language === 'hi' ? 'हिंदी' : 'বাংলা'}
+                            onPress={() => setShowLangModal(true)}
                         />
                     </View>
 
@@ -136,7 +139,7 @@ export const Profile = () => {
                     <View className="bg-white dark:bg-neutral-800 rounded-2xl overflow-hidden border border-neutral-border dark:border-neutral-700 shadow-sm mb-6">
                         <SettingItem
                             icon={<Settings size={20} color="#64748B" />}
-                            label="Dark Mode"
+                            label={t('dark_mode')}
                             value={theme === 'dark'}
                             onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                         />
@@ -157,7 +160,7 @@ export const Profile = () => {
                     </View>
 
                     <Button
-                        title="Logout"
+                        title={t('logout')}
                         variant="ghost"
                         icon={<LogOut size={18} color="#ef4444" />}
                         className="border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 mb-4"
@@ -209,7 +212,7 @@ export const Profile = () => {
                         )}
 
                         <Button
-                            title="Save Changes"
+                            title={t('save')}
                             onPress={handleSaveProfile}
                             variant="primary"
                             loading={isUpdating}
@@ -218,6 +221,39 @@ export const Profile = () => {
                             className="mt-2 shadow-lg shadow-primary/30"
                         />
 
+                        <View className="h-8" />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Language Selection Modal */}
+            <Modal
+                visible={showLangModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowLangModal(false)}
+            >
+                <View className="flex-1 justify-end bg-black/50">
+                    <View className="bg-white dark:bg-neutral-900 rounded-t-3xl p-6">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-neutral-text dark:text-white">{t('select_language')}</Text>
+                            <TouchableOpacity onPress={() => setShowLangModal(false)} className="p-2 bg-gray-100 dark:bg-neutral-800 rounded-full">
+                                <X size={20} color="#94A3B8" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {['en', 'hi', 'bn'].map((langKey) => (
+                            <TouchableOpacity
+                                key={langKey}
+                                onPress={() => { setLanguage(langKey as any); setShowLangModal(false); }}
+                                className={`flex-row items-center justify-between p-4 mb-3 rounded-xl border-2 ${language === langKey ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800'}`}
+                            >
+                                <Text className={`text-base font-semibold ${language === langKey ? 'text-primary' : 'text-neutral-text dark:text-white'}`}>
+                                    {langKey === 'en' ? 'English' : langKey === 'hi' ? 'हिंदी (Hindi)' : 'বাংলা (Bengali)'}
+                                </Text>
+                                {language === langKey && <Shield size={20} color="#2563EB" />}
+                            </TouchableOpacity>
+                        ))}
                         <View className="h-8" />
                     </View>
                 </View>

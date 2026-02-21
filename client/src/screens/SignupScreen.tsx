@@ -7,12 +7,14 @@ import { ScreenWrapper } from '../components/ui';
 import { ArrowLeft, Mail, User, Phone, Lock, Calendar, Eye, EyeOff, CheckCircle, ShieldCheck } from 'lucide-react-native';
 import { sendOtpEmail, verifyOtp } from '../services/emailService';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../services/LanguageContext';
 
 type SignupStep = 1 | 2;
 
 export const SignupScreen = ({ navigation }: any) => {
     const { signup } = useOffline();
     const { showToast } = useToast();
+    const { t } = useLanguage();
     const [step, setStep] = useState<SignupStep>(1);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -153,7 +155,7 @@ export const SignupScreen = ({ navigation }: any) => {
         }
 
         setIsLoading(true);
-        const success = await signup({
+        const result = await signup({
             name: name.trim(),
             email: email.trim(),
             password,
@@ -162,7 +164,11 @@ export const SignupScreen = ({ navigation }: any) => {
         });
         setIsLoading(false);
 
-        // If signup succeeds, RootNavigator will auto-redirect
+        if (result === true) {
+            showToast('Account created successfully!', 'success');
+        } else if (typeof result === 'string') {
+            showToast(result, 'error');
+        }
     };
 
     // OTP digit inputs
@@ -215,7 +221,7 @@ export const SignupScreen = ({ navigation }: any) => {
                                     className="flex-row items-center mb-6"
                                 >
                                     <ArrowLeft size={20} color="#94A3B8" />
-                                    <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1 font-medium">Back</Text>
+                                    <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1 font-medium">{t('back')}</Text>
                                 </TouchableOpacity>
 
                                 <View className="items-center mb-8">
@@ -223,7 +229,7 @@ export const SignupScreen = ({ navigation }: any) => {
                                         <ShieldCheck size={32} color="#2563EB" />
                                     </View>
                                     <Text className="text-2xl font-bold text-neutral-text dark:text-white mb-1">
-                                        Create Account
+                                        {t('create_account')}
                                     </Text>
                                     <Text className="text-neutral-text-secondary dark:text-neutral-400 text-base text-center">
                                         Step 1: Verify your identity
@@ -231,7 +237,7 @@ export const SignupScreen = ({ navigation }: any) => {
                                 </View>
 
                                 <Input
-                                    label="Full Name"
+                                    label={t('full_name')}
                                     placeholder="Enter your full name"
                                     value={name}
                                     onChangeText={setName}
@@ -239,8 +245,8 @@ export const SignupScreen = ({ navigation }: any) => {
                                 />
 
                                 <Input
-                                    label="Email Address"
-                                    placeholder="name@example.com"
+                                    label={t('email_address')}
+                                    placeholder={t('email_placeholder')}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                     value={email}
@@ -317,7 +323,7 @@ export const SignupScreen = ({ navigation }: any) => {
                                     className="flex-row items-center mb-6"
                                 >
                                     <ArrowLeft size={20} color="#94A3B8" />
-                                    <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1 font-medium">Back</Text>
+                                    <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1 font-medium">{t('back')}</Text>
                                 </TouchableOpacity>
 
                                 <View className="items-center mb-8">
@@ -349,8 +355,8 @@ export const SignupScreen = ({ navigation }: any) => {
 
                                 <View className="relative">
                                     <Input
-                                        label="Password"
-                                        placeholder="Minimum 6 characters"
+                                        label={t('password')}
+                                        placeholder={t('password_placeholder')}
                                         secureTextEntry={!showPassword}
                                         value={password}
                                         onChangeText={setPassword}
@@ -379,7 +385,7 @@ export const SignupScreen = ({ navigation }: any) => {
                                 />
 
                                 <Button
-                                    title="Create Account"
+                                    title={t('create_account')}
                                     onPress={handleSignup}
                                     variant="primary"
                                     loading={isLoading}
@@ -392,11 +398,11 @@ export const SignupScreen = ({ navigation }: any) => {
                         {/* Login Link */}
                         <View className="flex-row justify-center mt-8">
                             <Text className="text-neutral-text-secondary dark:text-neutral-400 text-base">
-                                Already have an account?{' '}
+                                {t('already_have_account')}{' '}
                             </Text>
                             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                                 <Text className="text-primary dark:text-blue-400 font-bold text-base">
-                                    Sign In
+                                    {t('sign_in')}
                                 </Text>
                             </TouchableOpacity>
                         </View>

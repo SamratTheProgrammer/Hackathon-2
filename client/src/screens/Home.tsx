@@ -12,9 +12,11 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../services/LanguageContext';
 
 export const Home = () => {
     const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo } = useOffline();
+    const { t } = useLanguage();
     const navigation = useNavigation<any>();
     const [refreshing, setRefreshing] = React.useState(false);
     const [balanceVisible, setBalanceVisible] = React.useState(false);
@@ -44,19 +46,19 @@ export const Home = () => {
     const recentTxns = transactions.slice(0, 3);
 
     const quickActions = [
-        { icon: <ArrowUpRight color="white" size={24} />, label: 'Pay / Scan', isActive: true, onPress: () => navigation.navigate('Pay') },
-        { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: 'Receive', onPress: () => navigation.navigate('Receive') },
-        { icon: <Wallet color="#2563EB" size={24} />, label: 'Load Cash', onPress: () => navigation.navigate('Wallet') },
-        { icon: <RefreshCw color="#2563EB" size={24} />, label: 'Sync Txns', onPress: syncTransactions },
-        { icon: <Landmark color="#2563EB" size={24} />, label: bankAccountNo ? 'Bank Linked' : 'Add Bank', onPress: () => navigation.navigate('AddBank') },
-        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: toggleBalance },
+        { icon: <ArrowUpRight color="white" size={24} />, label: t('scan_pay'), isActive: true, onPress: () => navigation.navigate('Pay') },
+        { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: t('nav_receive'), onPress: () => navigation.navigate('Receive') },
+        { icon: <Wallet color="#2563EB" size={24} />, label: t('load_cash'), onPress: () => navigation.navigate('Wallet') },
+        { icon: <RefreshCw color="#2563EB" size={24} />, label: t('sync_now'), onPress: syncTransactions },
+        { icon: <Landmark color="#2563EB" size={24} />, label: bankAccountNo ? 'Bank Linked' : t('add_bank'), onPress: () => navigation.navigate('AddBank') },
+        { icon: <Eye color="#2563EB" size={24} />, label: t('check_balance'), onPress: toggleBalance },
         { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('Wallet') },
     ];
 
     const billActions = [
-        { icon: <Smartphone color="#2563EB" size={22} />, label: 'Mobile\nRecharge', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-        { icon: <Zap color="#F59E0B" size={22} />, label: 'Electricity', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-        { icon: <Tv color="#8B5CF6" size={22} />, label: 'DTH', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+        { icon: <Smartphone color="#2563EB" size={22} />, label: t('mobile_recharge'), bg: 'bg-blue-50 dark:bg-blue-900/20' },
+        { icon: <Zap color="#F59E0B" size={22} />, label: t('electricity'), bg: 'bg-amber-50 dark:bg-amber-900/20' },
+        { icon: <Tv color="#8B5CF6" size={22} />, label: t('dth'), bg: 'bg-violet-50 dark:bg-violet-900/20' },
         { icon: <Car color="#10B981" size={22} />, label: 'FastTag', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
     ];
 
@@ -69,7 +71,7 @@ export const Home = () => {
                 {/* Header */}
                 <View className="flex-row justify-between items-center mb-6">
                     <View>
-                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">Welcome back,</Text>
+                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
                         <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user?.name}</Text>
                     </View>
                     <TouchableOpacity
@@ -91,7 +93,7 @@ export const Home = () => {
                 >
                     <View className="flex-row justify-between items-start mb-6">
                         <View>
-                            <Text className="text-white/80 font-medium mb-1">Offline Balance</Text>
+                            <Text className="text-white/80 font-medium mb-1">{t('offline_wallet')}</Text>
                             <Text className="text-4xl font-bold text-white">₹{offlineWallet?.balance.toFixed(2)}</Text>
                         </View>
                         <View className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
@@ -153,7 +155,7 @@ export const Home = () => {
                 )}
 
                 {/* Quick Actions */}
-                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">Quick Actions</Text>
+                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">{t('quick_actions')}</Text>
                 <View className="flex-row flex-wrap mb-6" style={{ gap: 0 }}>
                     {quickActions.map((action, index) => (
                         <ActionButton
@@ -167,7 +169,7 @@ export const Home = () => {
                 </View>
 
                 {/* Bills & Recharges */}
-                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">Bills & Recharges</Text>
+                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">{t('bills_recharges')}</Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -193,9 +195,9 @@ export const Home = () => {
 
                 {/* Recent Activity */}
                 <View className="flex-row justify-between items-center mb-4">
-                    <Text className="text-lg font-bold text-neutral-text dark:text-white">Recent Activity</Text>
+                    <Text className="text-lg font-bold text-neutral-text dark:text-white">{t('recent_transactions')}</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
-                        <Text className="text-primary dark:text-blue-400 font-semibold">View All</Text>
+                        <Text className="text-primary dark:text-blue-400 font-semibold">{t('view_all')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -215,7 +217,7 @@ export const Home = () => {
                                             <RefreshCw size={20} color="#3b82f6" />}
                                 </View>
                                 <View>
-                                    <Text className="font-semibold text-neutral-text dark:text-white capitalize text-base">{txn.type}</Text>
+                                    <Text className="font-semibold text-neutral-text dark:text-white capitalize text-base">{t(txn.type)}</Text>
                                     <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">{new Date(txn.createdAt).toLocaleDateString()}</Text>
                                 </View>
                             </View>
@@ -226,7 +228,7 @@ export const Home = () => {
                                 <Text className={`text-xs capitalize font-medium ${txn.status === 'pending' ? 'text-status-warning' :
                                     txn.status === 'failed' ? 'text-status-error' : 'text-neutral-text-secondary dark:text-neutral-400'
                                     } `}>
-                                    {txn.status}
+                                    {t(txn.status)}
                                 </Text>
                             </View>
                         </Card>

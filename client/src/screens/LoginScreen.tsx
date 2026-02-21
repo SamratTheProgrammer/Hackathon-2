@@ -6,10 +6,12 @@ import { InputField as Input } from '../components/ui/InputField';
 import { ScreenWrapper } from '../components/ui';
 import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../services/LanguageContext';
 
 export const LoginScreen = ({ navigation }: any) => {
     const { login } = useOffline();
     const { showToast } = useToast();
+    const { t } = useLanguage();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -26,13 +28,14 @@ export const LoginScreen = ({ navigation }: any) => {
         }
 
         setIsLoading(true);
-        const success = await login(email.trim(), password);
+        const result = await login(email.trim(), password);
         setIsLoading(false);
 
-        if (success) {
+        if (result === true) {
             showToast('Login successful!', 'success');
+        } else if (typeof result === 'string') {
+            showToast(result, 'error');
         }
-        // Errors are handled inside OfflineContext with toasts
     };
 
     return (
@@ -51,18 +54,18 @@ export const LoginScreen = ({ navigation }: any) => {
                             <ShieldCheck size={48} color="#2563EB" />
                         </View>
                         <Text className="text-4xl font-bold text-neutral-text dark:text-white text-center">
-                            DigiDhan
+                            {t('app_name')}
                         </Text>
                         <Text className="text-neutral-text-secondary dark:text-neutral-400 mt-2 text-center text-lg">
-                            Secure Payments, Anywhere.
+                            {t('tagline')}
                         </Text>
                     </View>
 
                     {/* Form */}
                     <View>
                         <Input
-                            label="Email Address"
-                            placeholder="name@example.com"
+                            label={t('email_address')}
+                            placeholder={t('email_placeholder')}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             value={email}
@@ -72,8 +75,8 @@ export const LoginScreen = ({ navigation }: any) => {
 
                         <View className="relative">
                             <Input
-                                label="Password"
-                                placeholder="Enter your password"
+                                label={t('password')}
+                                placeholder={t('password_placeholder')}
                                 secureTextEntry={!showPassword}
                                 value={password}
                                 onChangeText={setPassword}
@@ -98,12 +101,12 @@ export const LoginScreen = ({ navigation }: any) => {
                             className="self-end mb-6"
                         >
                             <Text className="text-primary dark:text-blue-400 font-semibold text-sm">
-                                Forgot Password?
+                                {t('forgot_password')}
                             </Text>
                         </TouchableOpacity>
 
                         <Button
-                            title="Sign In"
+                            title={t('sign_in')}
                             onPress={handleLogin}
                             variant="primary"
                             loading={isLoading}
@@ -116,17 +119,17 @@ export const LoginScreen = ({ navigation }: any) => {
                     {/* Signup Link */}
                     <View className="flex-row justify-center mt-8">
                         <Text className="text-neutral-text-secondary dark:text-neutral-400 text-base">
-                            Don't have an account?{' '}
+                            {t('dont_have_account')}{' '}
                         </Text>
                         <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
                             <Text className="text-primary dark:text-blue-400 font-bold text-base">
-                                Create Account
+                                {t('create_account')}
                             </Text>
                         </TouchableOpacity>
                     </View>
 
                     <Text className="text-center text-neutral-text-secondary dark:text-neutral-400 text-xs mt-8">
-                        By continuing, you agree to our Terms & Privacy Policy
+                        {t('terms_privacy')}
                     </Text>
                 </ScrollView>
             </KeyboardAvoidingView>
