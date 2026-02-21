@@ -4,6 +4,11 @@ export type UserProfile = {
     phone: string;
     avatar?: string;
     upiId: string;
+    email?: string;
+    token?: string;
+    accountNumber?: string;
+    mobile?: string;
+    profilePhoto?: string;
 };
 
 export type WalletLimits = {

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { AppState, OfflineWallet, Transaction, TransactionType, UserProfile } from '../types';
 import { StorageService } from '../storage';
 import { MockApi } from './api';
 
 const DEFAULT_LIMITS = { maxBalance: 2000, maxPerTransaction: 500, dailyLimit: 2000 };
+const API_URL = 'http://localhost:5000/api';
 
 interface ContextType extends AppState {
     setOfflineMode: (isOffline: boolean) => void;
@@ -13,7 +14,9 @@ interface ContextType extends AppState {
     receiveMoney: (amount: number, fromUser: Partial<UserProfile>) => Promise<boolean>;
     syncTransactions: () => Promise<void>;
     isLoading: boolean;
-    login: (phone: string, pin: string) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<boolean>;
+    signup: (data: { name: string; email: string; password: string; mobile: string; dob: string }) => Promise<boolean>;
+    updateUserProfile: (data: { name?: string }) => Promise<boolean>;
     linkBankAccount: (accountNo: string, email: string, pass: string) => Promise<boolean>;
     logout: () => void;
 }
@@ -49,42 +52,178 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setBankAccountNo(storedAccountNo);
         setOfflineWallet(storedWallet || { id: 'w1', balance: 0, lastSyncedAt: new Date().toISOString(), limits: DEFAULT_LIMITS });
 
-        // Load offline transactions + fetch bank transactions if token exists
+        // Load offline transactions + fetch bank transactions if bank is linked
         let allTxns = storedTxns || [];
         if (storedToken) {
-            const bankTxns = await MockApi.fetchTransactions(storedToken);
-            const formattedBankTxns = bankTxns.map((t: any) => ({
-                id: t.id,
-                type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
-                amount: t.amount,
-                status: t.status === 'Success' ? 'settled' : t.status.toLowerCase(),
-                createdAt: t.date,
-                isOffline: false,
-                note: t.remarks || (t.type === 'credit' ? 'Credit' : 'Debit'),
-                fromUser: t.type === 'credit' ? t.to : undefined,
-                toUser: t.type === 'debit' ? t.to : undefined
-            }));
+            try {
+                const bankTxns = await MockApi.fetchTransactions(storedToken);
+                const formattedBankTxns = bankTxns.map((t: any) => ({
+                    id: t.id,
+                    type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
+                    amount: t.amount,
+                    status: t.status === 'Success' ? 'settled' : t.status.toLowerCase(),
+                    createdAt: t.date,
+                    isOffline: false,
+                    note: t.remarks || (t.type === 'credit' ? 'Credit' : 'Debit'),
+                    fromUser: t.type === 'credit' ? t.to : undefined,
+                    toUser: t.type === 'debit' ? t.to : undefined
+                }));
 
-            const offlineOnly = allTxns.filter(t => t.isOffline);
-            allTxns = [...formattedBankTxns, ...offlineOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const offlineOnly = allTxns.filter(t => t.isOffline);
+                allTxns = [...formattedBankTxns, ...offlineOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            } catch (e) {
+                console.error('Error fetching transactions:', e);
+            }
         }
 
         setTransactions(allTxns);
         setIsLoading(false);
     };
 
-    const login = async (phone: string, pin: string) => {
-        // Mock login
-        const newUser: UserProfile = { id: 'u1', name: 'Demo User', phone, upiId: `${phone}@bank` };
-        await StorageService.saveUserProfile(newUser);
-        setUser(newUser);
-        return true;
+    // ============================================================
+    // APP AUTH — Uses separate AppUser table on server
+    // ============================================================
+
+    const login = async (email: string, password: string) => {
+        try {
+            const response = await fetch(`${API_URL}/app-auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                return error.message || 'Invalid credentials';
+            }
+
+            const data = await response.json();
+            const { token, user: serverUser } = data;
+
+            const newUser: UserProfile = {
+                id: serverUser.id,
+                name: serverUser.name,
+                phone: serverUser.mobile || '',
+                upiId: `${serverUser.mobile}@digidhan`,
+                email: serverUser.email,
+                token: token,
+                mobile: serverUser.mobile,
+            };
+
+            await StorageService.saveUserProfile(newUser);
+            await StorageService.saveAuthToken(token);
+            setUser(newUser);
+
+            // Restore or create wallet on login
+            const existingWallet = await StorageService.getOfflineWallet();
+            if (existingWallet) {
+                setOfflineWallet(existingWallet);
+            } else {
+                const walletId = `W-${serverUser.id.slice(0, 8).toUpperCase()}`;
+                const newWallet: OfflineWallet = {
+                    id: walletId,
+                    balance: 0,
+                    lastSyncedAt: new Date().toISOString(),
+                    limits: DEFAULT_LIMITS,
+                };
+                setOfflineWallet(newWallet);
+                await StorageService.saveOfflineWallet(newWallet);
+            }
+
+            return true;
+        } catch (error: any) {
+            return error.message || 'Could not connect to server';
+        }
     };
+
+    const signup = async (data: { name: string; email: string; password: string; mobile: string; dob: string }) => {
+        try {
+            const response = await fetch(`${API_URL}/app-auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                return error.message || 'Could not create account';
+            }
+
+            const resData = await response.json();
+            const { token, user: serverUser } = resData;
+
+            const newUser: UserProfile = {
+                id: serverUser.id,
+                name: serverUser.name,
+                phone: serverUser.mobile || '',
+                upiId: `${serverUser.mobile}@digidhan`,
+                email: serverUser.email,
+                token: token,
+                mobile: serverUser.mobile,
+            };
+
+            await StorageService.saveUserProfile(newUser);
+            await StorageService.saveAuthToken(token);
+            setUser(newUser);
+
+            // Auto-create offline wallet for the new user
+            const walletId = `W-${serverUser.id.slice(0, 8).toUpperCase()}`;
+            const newWallet: OfflineWallet = {
+                id: walletId,
+                balance: 0,
+                lastSyncedAt: new Date().toISOString(),
+                limits: DEFAULT_LIMITS,
+            };
+            setOfflineWallet(newWallet);
+            await StorageService.saveOfflineWallet(newWallet);
+
+            return true;
+        } catch (error: any) {
+            return error.message || 'Could not connect to server';
+        }
+    };
+
+    const updateUserProfile = async (profileData: { name?: string }) => {
+        try {
+            const token = user?.token || await StorageService.getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const response = await fetch(`${API_URL}/app-auth/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(profileData),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Update failed');
+            }
+
+            const resData = await response.json();
+            const updatedUser = { ...user!, ...profileData };
+            if (resData.user) {
+                updatedUser.name = resData.user.name || updatedUser.name;
+            }
+
+            await StorageService.saveUserProfile(updatedUser);
+            setUser(updatedUser);
+            return true;
+        } catch (error: any) {
+            Alert.alert('Update Failed', error.message || 'Could not update profile');
+            return false;
+        }
+    };
+
+    // ============================================================
+    // WALLET / TRANSACTIONS
+    // ============================================================
 
     const loadOfflineCash = async (amount: number) => {
         if (bankBalance < amount) return false;
 
-        // Debit bank, Credit offline
         const newBankBalance = bankBalance - amount;
         setBankBalance(newBankBalance);
         StorageService.saveBankBalance(newBankBalance);
@@ -109,7 +248,6 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const sendMoney = async (amount: number, toUser: Partial<UserProfile>, note?: string) => {
         if ((offlineWallet?.balance || 0) < amount) return false;
 
-        // Debit offline wallet
         const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance - amount };
         setOfflineWallet(newWallet);
         StorageService.saveOfflineWallet(newWallet);
@@ -119,7 +257,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             type: 'sent',
             amount,
             toUser: toUser.name || toUser.upiId,
-            status: isOfflineMode ? 'pending' : 'settled', // Online settles immediately for demo
+            status: isOfflineMode ? 'pending' : 'settled',
             createdAt: new Date().toISOString(),
             isOffline: isOfflineMode,
             note
@@ -129,7 +267,6 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const receiveMoney = async (amount: number, fromUser: Partial<UserProfile>) => {
-        // Credit offline wallet (simulating P2P receive)
         const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance + amount };
         setOfflineWallet(newWallet);
         StorageService.saveOfflineWallet(newWallet);
@@ -162,7 +299,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         const updatedTxns = transactions.map(t => {
             if (synced.includes(t.id)) return { ...t, status: 'settled', settledAt: new Date().toISOString() };
-            if (failed.includes(t.id)) return { ...t, status: 'failed' }; // Refund logic omitted for simplicity
+            if (failed.includes(t.id)) return { ...t, status: 'failed' };
             return t;
         }) as Transaction[];
 
@@ -170,31 +307,41 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         StorageService.saveTransactions(updatedTxns);
     };
 
-    const logout = () => {
-        StorageService.clearAll();
+    const logout = async () => {
+        await StorageService.clearAll();
         setUser(null);
+        setBankBalance(0);
+        setBankAccountNo(null);
+        setOfflineWallet(null);
+        setTransactions([]);
     };
+
+    // ============================================================
+    // LINK BANK — connects DigiDhan bank account to this app
+    // ============================================================
 
     const linkBankAccount = async (accountNumber: string, email: string, pass: string): Promise<boolean> => {
         try {
-            // 1. Login to get token
             const loginResponse = await MockApi.login(email, pass);
             const token = loginResponse.token;
 
-            // 2. Verify Bank Account
             const verificationResponse = await MockApi.verifyBankAccount(accountNumber, token);
 
-            // 3. Save Token and Account Details
             await StorageService.saveBankToken(token);
 
-            // Update state
             setBankBalance(verificationResponse.account.balance);
             StorageService.saveBankBalance(verificationResponse.account.balance);
 
             setBankAccountNo(verificationResponse.account.accountNumber);
             StorageService.saveBankAccountNo(verificationResponse.account.accountNumber);
 
-            // Fetch recent transactions
+            const updatedUser = {
+                ...user!,
+                accountNumber: verificationResponse.account.accountNumber,
+            };
+            setUser(updatedUser);
+            await StorageService.saveUserProfile(updatedUser);
+
             const bankTxns = await MockApi.fetchTransactions(token);
             const formattedBankTxns = bankTxns.map((t: any) => ({
                 id: t.id,
@@ -224,7 +371,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (
         <OfflineContext.Provider value={{
             user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo,
-            setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions, login, linkBankAccount, logout
+            setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions,
+            login, signup, updateUserProfile, linkBankAccount, logout
         }}>
             {children}
         </OfflineContext.Provider>

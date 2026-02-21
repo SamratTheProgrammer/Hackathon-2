@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Platform } from 'react-native';
 import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper } from '../components/ui';
-import { User, Settings, Bell, Shield, CircleHelp, LogOut, ChevronRight } from 'lucide-react-native';
+import { User, Settings, Bell, Shield, CircleHelp, LogOut, ChevronRight, Edit3, X, Save, Mail, Phone as PhoneIcon } from 'lucide-react-native';
 import { useTheme } from '../services/ThemeContext';
 
 const SettingItem = ({ icon, label, value, onPress, sublabel }: { icon: any, label: string, value?: boolean | string, onPress?: () => void, sublabel?: string }) => (
@@ -30,16 +30,39 @@ const SettingItem = ({ icon, label, value, onPress, sublabel }: { icon: any, lab
 );
 
 export const Profile = () => {
-    const { user, logout } = useOffline();
+    const { user, logout, updateUserProfile } = useOffline();
     const [biometrics, setBiometrics] = useState(false);
     const [notifications, setNotifications] = useState(true);
     const { theme, setTheme } = useTheme();
 
+    // Edit profile state
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editName, setEditName] = useState(user?.name || '');
+    const [isUpdating, setIsUpdating] = useState(false);
+
     const handleLogout = () => {
-        Alert.alert('Logout', 'Are you sure you want to logout?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Logout', style: 'destructive', onPress: logout }
-        ]);
+        logout();
+    };
+
+    const handleEditProfile = () => {
+        setEditName(user?.name || '');
+        setShowEditModal(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (!editName.trim()) {
+            Alert.alert('Error', 'Name cannot be empty');
+            return;
+        }
+
+        setIsUpdating(true);
+        const success = await updateUserProfile({ name: editName.trim() });
+        setIsUpdating(false);
+
+        if (success) {
+            setShowEditModal(false);
+            Alert.alert('Success', 'Profile updated successfully!');
+        }
     };
 
     return (
@@ -50,10 +73,30 @@ export const Profile = () => {
                         <Text className="text-4xl font-bold text-primary dark:text-blue-400">{user?.name ? user.name[0] : 'U'}</Text>
                     </View>
                     <Text className="text-xl font-bold text-neutral-text dark:text-white">{user?.name}</Text>
-                    <Text className="text-neutral-text-secondary dark:text-neutral-400">{user?.upiId}</Text>
-                    <View className="mt-2 bg-gray-100 dark:bg-neutral-700 px-3 py-1 rounded-full">
-                        <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">+91 {user?.phone}</Text>
-                    </View>
+                    {user?.email && (
+                        <View className="flex-row items-center mt-1">
+                            <Mail size={14} color="#94A3B8" />
+                            <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1">{user.email}</Text>
+                        </View>
+                    )}
+                    {user?.phone && (
+                        <View className="mt-2 bg-gray-100 dark:bg-neutral-700 px-3 py-1 rounded-full">
+                            <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">+91 {user.phone}</Text>
+                        </View>
+                    )}
+                    {user?.accountNumber && (
+                        <View className="mt-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full">
+                            <Text className="text-primary dark:text-blue-400 text-xs font-medium">A/C: {user.accountNumber}</Text>
+                        </View>
+                    )}
+
+                    <TouchableOpacity
+                        onPress={handleEditProfile}
+                        className="mt-3 flex-row items-center bg-primary/10 dark:bg-primary/20 px-4 py-2 rounded-full"
+                    >
+                        <Edit3 size={14} color="#2563EB" />
+                        <Text className="text-primary dark:text-blue-400 font-semibold text-sm ml-1">Edit Profile</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View className="px-4">
@@ -124,6 +167,61 @@ export const Profile = () => {
                     <Text className="text-center text-xs text-neutral-text-secondary dark:text-neutral-500 mt-2">Version 1.0.0 (Hackathon Build)</Text>
                 </View>
             </ScrollView>
+
+            {/* Edit Profile Modal */}
+            <Modal
+                visible={showEditModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowEditModal(false)}
+            >
+                <View className="flex-1 justify-end bg-black/50">
+                    <View className="bg-white dark:bg-neutral-800 rounded-t-3xl p-6">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-neutral-text dark:text-white">Edit Profile</Text>
+                            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                                <X size={24} color="#94A3B8" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text className="text-neutral-text dark:text-gray-300 text-sm font-medium mb-1.5">Full Name</Text>
+                        <View className="flex-row items-center bg-white dark:bg-neutral-900 border border-neutral-border dark:border-neutral-700 rounded-xl overflow-hidden mb-4">
+                            <View className="pl-3 pr-1">
+                                <User size={20} color="#94A3B8" />
+                            </View>
+                            <TextInput
+                                className="flex-1 p-3 text-neutral-text dark:text-white text-base"
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Enter your name"
+                                placeholderTextColor="#94A3B8"
+                            />
+                        </View>
+
+                        {user?.email && (
+                            <View className="mb-4">
+                                <Text className="text-neutral-text dark:text-gray-300 text-sm font-medium mb-1.5">Email</Text>
+                                <View className="flex-row items-center bg-gray-50 dark:bg-neutral-900 border border-neutral-border dark:border-neutral-700 rounded-xl p-3">
+                                    <Mail size={20} color="#94A3B8" />
+                                    <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-2">{user.email}</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        <Button
+                            title="Save Changes"
+                            onPress={handleSaveProfile}
+                            variant="primary"
+                            loading={isUpdating}
+                            disabled={isUpdating}
+                            icon={<Save size={18} color="white" />}
+                            className="mt-2 shadow-lg shadow-primary/30"
+                        />
+
+                        <View className="h-8" />
+                    </View>
+                </View>
+            </Modal>
         </ScreenWrapper>
     );
 };

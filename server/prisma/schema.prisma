@@ -33,6 +33,18 @@ model User {
   updatedAt   DateTime      @updatedAt
 }
 
+// Separate table for the mobile UPI app users (not DigiDhan bank users)
+model AppUser {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  mobile      String
+  dob         DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Device {
   id          String   @id @default(uuid())
   userId      String

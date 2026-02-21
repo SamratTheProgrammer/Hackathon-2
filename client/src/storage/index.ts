@@ -9,6 +9,8 @@ const KEYS = {
     APP_SETTINGS: 'app_settings',
     BANK_TOKEN: 'bank_token',
     BANK_ACCOUNT_NO: 'bank_account_no',
+    AUTH_TOKEN: 'auth_token',
+    APP_CREDENTIALS: 'app_credentials',
 };
 
 export const StorageService = {
@@ -36,7 +38,7 @@ export const StorageService = {
 
     async getBankBalance(): Promise<number> {
         const json = await AsyncStorage.getItem(KEYS.BANK_BALANCE);
-        return json ? JSON.parse(json) : 10000; // Default mock balance
+        return json ? JSON.parse(json) : 0;
     },
 
     async saveOfflineWallet(wallet: OfflineWallet): Promise<void> {
@@ -58,7 +60,26 @@ export const StorageService = {
     },
 
     async clearAll(): Promise<void> {
+        // Preserve theme preference across logout
+        const savedTheme = await AsyncStorage.getItem('user_theme');
         await AsyncStorage.clear();
+        if (savedTheme) {
+            await AsyncStorage.setItem('user_theme', savedTheme);
+        }
+    },
+
+    /** Clears session data but preserves app credentials so user can re-login */
+    async clearSession(): Promise<void> {
+        const keysToRemove = [
+            KEYS.USER_PROFILE,
+            KEYS.BANK_BALANCE,
+            KEYS.OFFLINE_WALLET,
+            KEYS.TRANSACTIONS,
+            KEYS.BANK_TOKEN,
+            KEYS.BANK_ACCOUNT_NO,
+            KEYS.AUTH_TOKEN,
+        ];
+        await AsyncStorage.multiRemove(keysToRemove);
     },
 
     async saveBankToken(token: string): Promise<void> {
@@ -75,5 +96,25 @@ export const StorageService = {
 
     async getBankAccountNo(): Promise<string | null> {
         return await AsyncStorage.getItem(KEYS.BANK_ACCOUNT_NO);
-    }
+    },
+
+    async saveAuthToken(token: string): Promise<void> {
+        await AsyncStorage.setItem(KEYS.AUTH_TOKEN, token);
+    },
+
+    async getAuthToken(): Promise<string | null> {
+        return await AsyncStorage.getItem(KEYS.AUTH_TOKEN);
+    },
+
+    /** Save app-level credentials (separate from bank credentials) */
+    async saveAppCredentials(creds: { name: string; email: string; password: string; mobile: string; dob: string }): Promise<void> {
+        await AsyncStorage.setItem(KEYS.APP_CREDENTIALS, JSON.stringify(creds));
+    },
+
+    /** Get app-level credentials */
+    async getAppCredentials(): Promise<{ name: string; email: string; password: string; mobile: string; dob: string } | null> {
+        const json = await AsyncStorage.getItem(KEYS.APP_CREDENTIALS);
+        return json ? JSON.parse(json) : null;
+    },
 };
+

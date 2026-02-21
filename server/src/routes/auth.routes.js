@@ -223,27 +223,28 @@ router.post('/forgot-password', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Generate token
+    // Generate reset token
     const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
-    // resetTokens[resetToken] = user.id; // Not needed if we verify JWT signature, but good to invalidate used ones.
 
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    // Try to send email via Nodemailer (optional — may fail if credentials not configured)
+    try {
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Password Reset Request',
+            html: `<p>Click <a href="${resetLink}">here</a> to reset your password. This link expires in 15 minutes.</p>`
+        };
+        const transporter = getTransporter();
+        transporter.sendMail(mailOptions, (error) => {
+            if (error) console.error('Email Error (non-critical):', error.message);
+        });
+    } catch (emailError) {
+        console.error('Nodemailer not configured, skipping email:', emailError.message);
+    }
 
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Password Reset Request',
-        html: `<p>Click <a href="${resetLink}">here</a> to reset your password. This link expires in 15 minutes.</p>`
-    };
-
-    const transporter = getTransporter();
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            console.error('Email Error:', error);
-            return res.status(500).json({ message: 'Error sending email', error: error.message });
-        }
-        res.json({ message: 'Password reset email sent' });
-    });
+    // Always return the resetToken so frontend can use it after OTP verification
+    res.json({ message: 'Password reset initiated', resetToken });
 });
 
 // Reset Password

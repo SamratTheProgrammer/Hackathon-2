@@ -26,6 +26,7 @@ app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/rewards', require('./routes/reward.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/security', require('./routes/security.routes'));
+app.use('/api/app-auth', require('./routes/app-auth.routes'));
 
 app.get('/', (req, res) => {
     res.send('Bank Backend is running');

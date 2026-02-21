@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOffline } from '../services/OfflineContext';
 import { OfflineBanner } from '../components/OfflineBanner';
@@ -8,7 +8,7 @@ import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper } from '../components/ui';
 import {
     ArrowUpRight, ArrowDownLeft, Wallet, RefreshCw, Smartphone,
-    Landmark, Eye, ArrowLeftRight, Zap, Tv, Car
+    Landmark, Eye, EyeOff, ArrowLeftRight, Zap, Tv, Car
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,11 +17,28 @@ export const Home = () => {
     const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo } = useOffline();
     const navigation = useNavigation<any>();
     const [refreshing, setRefreshing] = React.useState(false);
+    const [balanceVisible, setBalanceVisible] = React.useState(false);
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     const onRefresh = async () => {
         setRefreshing(true);
-        // Simulate refresh
         setTimeout(() => setRefreshing(false), 1000);
+    };
+
+    const toggleBalance = () => {
+        if (!bankAccountNo) {
+            Alert.alert('No Bank Linked', 'Please link your DigiDhan bank account first.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Link Now', onPress: () => navigation.navigate('AddBank') }
+            ]);
+            return;
+        }
+        if (balanceVisible) {
+            Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setBalanceVisible(false));
+        } else {
+            setBalanceVisible(true);
+            Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+        }
     };
 
     const recentTxns = transactions.slice(0, 3);
@@ -31,8 +48,8 @@ export const Home = () => {
         { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: 'Receive', onPress: () => navigation.navigate('Receive') },
         { icon: <Wallet color="#2563EB" size={24} />, label: 'Load Cash', onPress: () => navigation.navigate('Wallet') },
         { icon: <RefreshCw color="#2563EB" size={24} />, label: 'Sync Txns', onPress: syncTransactions },
-        { icon: <Landmark color="#2563EB" size={24} />, label: 'Add Bank', onPress: () => navigation.navigate('AddBank') },
-        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: () => Alert.alert('Bank Balance', `₹${bankBalance.toFixed(2)}\n\nAccount: SBI •• ${bankAccountNo?.slice(-4) || 'XXXX'}`, [{ text: 'OK' }]) },
+        { icon: <Landmark color="#2563EB" size={24} />, label: bankAccountNo ? 'Bank Linked' : 'Add Bank', onPress: () => navigation.navigate('AddBank') },
+        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: toggleBalance },
         { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('Wallet') },
     ];
 
@@ -86,21 +103,53 @@ export const Home = () => {
                     </View>
                 </LinearGradient>
 
-                {/* Bank Balance (Hidden/Mocked when offline) */}
+                {/* Bank Balance — Tap to Check */}
                 {!isOfflineMode && (
-                    <Card className="mb-8 p-0 overflow-hidden border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
-                        <View className="p-4 flex-row justify-between items-center">
-                            <View>
-                                <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-sm">Bank Balance</Text>
-                                <Text className="text-xl font-bold text-neutral-text dark:text-white">₹{bankBalance.toFixed(2)}</Text>
+                    <TouchableOpacity activeOpacity={0.7} onPress={toggleBalance}>
+                        <Card className="mb-8 p-0 overflow-hidden border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
+                            <View className="p-4 flex-row justify-between items-center">
+                                <View className="flex-1">
+                                    <View className="flex-row items-center mb-1">
+                                        <Landmark size={16} color="#2563EB" />
+                                        <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-sm ml-1.5">
+                                            {bankAccountNo ? 'DigiDhan Bank' : 'Bank Account'}
+                                        </Text>
+                                    </View>
+
+                                    {!bankAccountNo ? (
+                                        <Text className="text-primary dark:text-blue-400 font-semibold text-sm">
+                                            Tap to link your bank account →
+                                        </Text>
+                                    ) : balanceVisible ? (
+                                        <Animated.View style={{ opacity: fadeAnim }}>
+                                            <Text className="text-2xl font-bold text-neutral-text dark:text-white">
+                                                ₹{bankBalance.toFixed(2)}
+                                            </Text>
+                                        </Animated.View>
+                                    ) : (
+                                        <Text className="text-base font-semibold text-neutral-text dark:text-white">
+                                            ₹ ••••••
+                                        </Text>
+                                    )}
+                                </View>
+
+                                <View className="flex-row items-center">
+                                    {bankAccountNo && (
+                                        <View className="bg-neutral-bg dark:bg-neutral-700 px-2.5 py-1 rounded-md mr-3">
+                                            <Text className="text-[10px] text-neutral-text-secondary dark:text-neutral-300 font-medium">
+                                                •• {bankAccountNo.slice(-4)}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {balanceVisible ? (
+                                        <EyeOff size={20} color="#94A3B8" />
+                                    ) : (
+                                        <Eye size={20} color="#2563EB" />
+                                    )}
+                                </View>
                             </View>
-                            <View className="bg-neutral-bg dark:bg-neutral-700 px-3 py-1 rounded-md">
-                                <Text className="text-xs text-neutral-text-secondary dark:text-neutral-300 font-medium">
-                                    {bankAccountNo ? `SBI •• ${bankAccountNo.slice(-4)}` : 'Not Linked'}
-                                </Text>
-                            </View>
-                        </View>
-                    </Card>
+                        </Card>
+                    </TouchableOpacity>
                 )}
 
                 {/* Quick Actions */}
