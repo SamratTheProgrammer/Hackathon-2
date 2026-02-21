@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppState, OfflineWallet, Transaction, UserProfile } from '../types';
+import { Alert } from 'react-native';
+import { AppState, OfflineWallet, Transaction, TransactionType, UserProfile } from '../types';
 import { StorageService } from '../storage';
 import { MockApi } from './api';
 
@@ -13,6 +14,7 @@ interface ContextType extends AppState {
     syncTransactions: () => Promise<void>;
     isLoading: boolean;
     login: (phone: string, pin: string) => Promise<boolean>;
+    linkBankAccount: (accountNo: string, email: string, pass: string) => Promise<boolean>;
     logout: () => void;
 }
 
@@ -21,6 +23,7 @@ const OfflineContext = createContext<ContextType | undefined>(undefined);
 export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [bankBalance, setBankBalance] = useState(0);
+    const [bankAccountNo, setBankAccountNo] = useState<string | null>(null);
     const [offlineWallet, setOfflineWallet] = useState<OfflineWallet | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -32,17 +35,41 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const loadInitialState = async () => {
         setIsLoading(true);
-        const [storedUser, storedBalance, storedWallet, storedTxns] = await Promise.all([
+        const [storedUser, storedBalance, storedWallet, storedTxns, storedAccountNo, storedToken] = await Promise.all([
             StorageService.getUserProfile(),
             StorageService.getBankBalance(),
             StorageService.getOfflineWallet(),
             StorageService.getTransactions(),
+            StorageService.getBankAccountNo(),
+            StorageService.getBankToken(),
         ]);
 
         if (storedUser) setUser(storedUser);
         setBankBalance(storedBalance);
+        setBankAccountNo(storedAccountNo);
         setOfflineWallet(storedWallet || { id: 'w1', balance: 0, lastSyncedAt: new Date().toISOString(), limits: DEFAULT_LIMITS });
-        setTransactions(storedTxns || []);
+
+        // Load offline transactions + fetch bank transactions if token exists
+        let allTxns = storedTxns || [];
+        if (storedToken) {
+            const bankTxns = await MockApi.fetchTransactions(storedToken);
+            const formattedBankTxns = bankTxns.map((t: any) => ({
+                id: t.id,
+                type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
+                amount: t.amount,
+                status: t.status === 'Success' ? 'settled' : t.status.toLowerCase(),
+                createdAt: t.date,
+                isOffline: false,
+                note: t.remarks || (t.type === 'credit' ? 'Credit' : 'Debit'),
+                fromUser: t.type === 'credit' ? t.to : undefined,
+                toUser: t.type === 'debit' ? t.to : undefined
+            }));
+
+            const offlineOnly = allTxns.filter(t => t.isOffline);
+            allTxns = [...formattedBankTxns, ...offlineOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }
+
+        setTransactions(allTxns);
         setIsLoading(false);
     };
 
@@ -148,10 +175,56 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setUser(null);
     };
 
+    const linkBankAccount = async (accountNumber: string, email: string, pass: string): Promise<boolean> => {
+        try {
+            // 1. Login to get token
+            const loginResponse = await MockApi.login(email, pass);
+            const token = loginResponse.token;
+
+            // 2. Verify Bank Account
+            const verificationResponse = await MockApi.verifyBankAccount(accountNumber, token);
+
+            // 3. Save Token and Account Details
+            await StorageService.saveBankToken(token);
+
+            // Update state
+            setBankBalance(verificationResponse.account.balance);
+            StorageService.saveBankBalance(verificationResponse.account.balance);
+
+            setBankAccountNo(verificationResponse.account.accountNumber);
+            StorageService.saveBankAccountNo(verificationResponse.account.accountNumber);
+
+            // Fetch recent transactions
+            const bankTxns = await MockApi.fetchTransactions(token);
+            const formattedBankTxns = bankTxns.map((t: any) => ({
+                id: t.id,
+                type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
+                amount: t.amount,
+                status: t.status === 'Success' ? 'settled' : t.status.toLowerCase(),
+                createdAt: t.date,
+                isOffline: false,
+                note: t.remarks || (t.type === 'credit' ? 'Credit' : 'Debit'),
+                fromUser: t.type === 'credit' ? t.to : undefined,
+                toUser: t.type === 'debit' ? t.to : undefined
+            }));
+
+            setTransactions(prev => {
+                const offlineOnly = prev.filter(t => t.isOffline);
+                return [...formattedBankTxns, ...offlineOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            });
+
+            return true;
+        } catch (error: any) {
+            console.error(error);
+            Alert.alert('Link Failed', error.message || 'Could not verify account');
+            return false;
+        }
+    };
+
     return (
         <OfflineContext.Provider value={{
-            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading,
-            setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions, login, logout
+            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo,
+            setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions, login, linkBankAccount, logout
         }}>
             {children}
         </OfflineContext.Provider>

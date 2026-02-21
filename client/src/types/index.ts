@@ -41,4 +41,5 @@ export type AppState = {
     offlineWallet: OfflineWallet | null;
     transactions: Transaction[];
     isOfflineMode: boolean; // Dev toggle
+    bankAccountNo?: string | null;
 };

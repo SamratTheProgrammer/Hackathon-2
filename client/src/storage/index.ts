@@ -7,6 +7,8 @@ const KEYS = {
     OFFLINE_WALLET: 'offline_wallet',
     TRANSACTIONS: 'transactions',
     APP_SETTINGS: 'app_settings',
+    BANK_TOKEN: 'bank_token',
+    BANK_ACCOUNT_NO: 'bank_account_no',
 };
 
 export const StorageService = {
@@ -57,5 +59,21 @@ export const StorageService = {
 
     async clearAll(): Promise<void> {
         await AsyncStorage.clear();
+    },
+
+    async saveBankToken(token: string): Promise<void> {
+        await AsyncStorage.setItem(KEYS.BANK_TOKEN, token);
+    },
+
+    async getBankToken(): Promise<string | null> {
+        return await AsyncStorage.getItem(KEYS.BANK_TOKEN);
+    },
+
+    async saveBankAccountNo(accountNo: string): Promise<void> {
+        await AsyncStorage.setItem(KEYS.BANK_ACCOUNT_NO, accountNo);
+    },
+
+    async getBankAccountNo(): Promise<string | null> {
+        return await AsyncStorage.getItem(KEYS.BANK_ACCOUNT_NO);
     }
 };

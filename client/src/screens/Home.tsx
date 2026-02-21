@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export const Home = () => {
-    const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions } = useOffline();
+    const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo } = useOffline();
     const navigation = useNavigation<any>();
     const [refreshing, setRefreshing] = React.useState(false);
 
@@ -31,8 +31,8 @@ export const Home = () => {
         { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: 'Receive', onPress: () => navigation.navigate('Receive') },
         { icon: <Wallet color="#2563EB" size={24} />, label: 'Load Cash', onPress: () => navigation.navigate('Wallet') },
         { icon: <RefreshCw color="#2563EB" size={24} />, label: 'Sync Txns', onPress: syncTransactions },
-        { icon: <Landmark color="#2563EB" size={24} />, label: 'Add Bank', onPress: () => navigation.navigate('Wallet') },
-        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: () => Alert.alert('Bank Balance', `₹${bankBalance.toFixed(2)}\n\nAccount: SBI •• 4545`, [{ text: 'OK' }]) },
+        { icon: <Landmark color="#2563EB" size={24} />, label: 'Add Bank', onPress: () => navigation.navigate('AddBank') },
+        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: () => Alert.alert('Bank Balance', `₹${bankBalance.toFixed(2)}\n\nAccount: SBI •• ${bankAccountNo?.slice(-4) || 'XXXX'}`, [{ text: 'OK' }]) },
         { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('Wallet') },
     ];
 
@@ -95,7 +95,9 @@ export const Home = () => {
                                 <Text className="text-xl font-bold text-neutral-text dark:text-white">₹{bankBalance.toFixed(2)}</Text>
                             </View>
                             <View className="bg-neutral-bg dark:bg-neutral-700 px-3 py-1 rounded-md">
-                                <Text className="text-xs text-neutral-text-secondary dark:text-neutral-300 font-medium">SBI •• 4545</Text>
+                                <Text className="text-xs text-neutral-text-secondary dark:text-neutral-300 font-medium">
+                                    {bankAccountNo ? `SBI •• ${bankAccountNo.slice(-4)}` : 'Not Linked'}
+                                </Text>
                             </View>
                         </View>
                     </Card>

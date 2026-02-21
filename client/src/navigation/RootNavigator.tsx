@@ -8,6 +8,7 @@ import { Activity } from '../screens/Activity';
 import { Wallet } from '../screens/Wallet';
 import { Profile } from '../screens/Profile';
 import { Onboarding } from '../screens/Onboarding';
+import { AddBank } from '../screens/AddBank';
 import { useOffline } from '../services/OfflineContext';
 import { useTheme } from '../services/ThemeContext';
 import { View, ActivityIndicator, Platform } from 'react-native';
@@ -109,7 +110,10 @@ export const RootNavigator = () => {
             <StatusBar style={activeTheme === 'dark' ? 'light' : 'dark'} backgroundColor={activeTheme === 'dark' ? '#0F172A' : '#F8FAFC'} />
             <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: activeTheme === 'dark' ? '#0F172A' : '#F8FAFC' } }}>
                 {user ? (
-                    <Stack.Screen name="Main" component={TabNavigator} />
+                    <>
+                        <Stack.Screen name="Main" component={TabNavigator} />
+                        <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
+                    </>
                 ) : (
                     <Stack.Screen name="Onboarding" component={Onboarding} />
                 )}
