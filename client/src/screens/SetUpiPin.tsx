@@ -60,8 +60,13 @@ export const SetUpiPin = () => {
         if (step === 'verify') {
             if (pin.length !== 6) return;
             if (pin === existingPin) {
-                // Return to BankDetails with verification success
-                (navigation as any).navigate('BankDetails', { account, verified: true });
+                const source = (route.params as any)?.source;
+                if (source === 'checkBalance') {
+                    // Go back to Home with verified flag
+                    (navigation as any).navigate('Main', { screen: 'Home', params: { balanceVerified: true } });
+                } else {
+                    (navigation as any).navigate('BankDetails', { account, verified: true });
+                }
             } else {
                 showToast('The UPI PIN you entered is incorrect.', 'error');
                 setPin('');

@@ -58,6 +58,23 @@ export const MockApi = {
         }
     },
 
+    lookupAccount: async (accountNumber: string): Promise<any> => {
+        try {
+            const response = await fetchWithTimeout(`${API_URL}/user/lookup-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Account not found');
+            }
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
     login: async (email: string, password: string): Promise<any> => {
         try {
             const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
@@ -198,27 +215,6 @@ export const MockApi = {
         } catch (error) {
             console.error('Fetch Transactions Error:', error);
             return [];
-        }
-    },
-
-    lookupAccount: async (accountNumber: string, token: string): Promise<{ email: string }> => {
-        try {
-            const response = await fetchWithTimeout(`${API_URL}/user/lookup-account`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ accountNumber })
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Account lookup failed');
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Lookup API Error:', error);
-            throw error;
         }
     },
 

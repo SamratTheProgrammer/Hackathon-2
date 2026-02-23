@@ -252,25 +252,74 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const loadOfflineCash = async (amount: number) => {
         if (bankBalance < amount) return false;
 
-        const newBankBalance = bankBalance - amount;
-        setBankBalance(newBankBalance);
-        StorageService.saveBankBalance(newBankBalance);
+        try {
+            // Deduct from real bank account via server
+            const token = await StorageService.getBankToken();
+            if (token) {
+                const response = await fetch('http://localhost:5000/api/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        amount,
+                        type: 'debit',
+                        to: 'Offline Wallet',
+                        remarks: 'Loaded cash to offline wallet',
+                        status: 'Success'
+                    })
+                });
 
-        const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance + amount };
-        setOfflineWallet(newWallet);
-        StorageService.saveOfflineWallet(newWallet);
+                if (!response.ok) {
+                    const err = await response.json();
+                    console.error('Server deduction failed:', err.message);
+                    return false;
+                }
 
-        const txn: Transaction = {
-            id: Date.now().toString(),
-            type: 'load',
-            amount,
-            status: 'settled',
-            createdAt: new Date().toISOString(),
-            isOffline: false,
-            note: 'Loaded from Bank'
-        };
-        addTransaction(txn);
-        return true;
+                const data = await response.json();
+                // Use the server-returned balance as the source of truth
+                const serverBalance = data.newBalance;
+                setBankBalance(serverBalance);
+                StorageService.saveBankBalance(serverBalance);
+
+                // Update bankAccounts to reflect new balance
+                setBankAccounts(prev => prev.map(a =>
+                    a.accountNumber === bankAccountNo
+                        ? { ...a, balance: serverBalance }
+                        : a
+                ));
+            } else {
+                // Fallback: local-only deduction if no token
+                const newBankBalance = bankBalance - amount;
+                setBankBalance(newBankBalance);
+                StorageService.saveBankBalance(newBankBalance);
+                setBankAccounts(prev => prev.map(a =>
+                    a.accountNumber === bankAccountNo
+                        ? { ...a, balance: newBankBalance }
+                        : a
+                ));
+            }
+
+            const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance + amount };
+            setOfflineWallet(newWallet);
+            StorageService.saveOfflineWallet(newWallet);
+
+            const txn: Transaction = {
+                id: Date.now().toString(),
+                type: 'load',
+                amount,
+                status: 'settled',
+                createdAt: new Date().toISOString(),
+                isOffline: false,
+                note: 'Loaded from Bank'
+            };
+            addTransaction(txn);
+            return true;
+        } catch (error) {
+            console.error('Load cash error:', error);
+            return false;
+        }
     };
 
     const sendMoney = async (amount: number, toUser: Partial<UserProfile>, note?: string) => {

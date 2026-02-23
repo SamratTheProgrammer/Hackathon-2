@@ -39,7 +39,7 @@ export const AddBank = () => {
 
         setIsLoading(true);
         try {
-            const result = await MockApi.lookupAccount(accountNumber, '');
+            const result = await MockApi.lookupAccount(accountNumber);
             if (result && result.email) {
                 setEmail(result.email);
                 setAccountDetails(result);

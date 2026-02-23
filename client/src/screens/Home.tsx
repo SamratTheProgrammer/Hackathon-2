@@ -10,16 +10,20 @@ import {
     ArrowUpRight, ArrowDownLeft, Wallet, RefreshCw, Smartphone,
     Landmark, Eye, EyeOff, ArrowLeftRight, Zap, Tv, Car
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLanguage } from '../services/LanguageContext';
+import { StorageService } from '../storage';
+import { useToast } from '../components/ui/Toast';
 
 export const Home = () => {
     const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo, bankAccounts } = useOffline();
     const { t } = useLanguage();
     const navigation = useNavigation<any>();
+    const route = useRoute();
     const [refreshing, setRefreshing] = React.useState(false);
     const [balanceVisible, setBalanceVisible] = React.useState(false);
+    const [walletBalanceVisible, setWalletBalanceVisible] = React.useState(false);
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     const onRefresh = async () => {
@@ -27,7 +31,20 @@ export const Home = () => {
         setTimeout(() => setRefreshing(false), 1000);
     };
 
-    const toggleBalance = () => {
+    // Handle balance verified from UPI PIN screen
+    React.useEffect(() => {
+        const params = route.params as any;
+        if (params?.balanceVerified) {
+            setBalanceVisible(true);
+            Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+            // Clear the param so it doesn't retrigger
+            navigation.setParams({ balanceVerified: undefined });
+        }
+    }, [(route.params as any)?.balanceVerified]);
+
+    const { showToast } = useToast();
+
+    const toggleBalance = async () => {
         if (!bankAccountNo) {
             Alert.alert('No Bank Linked', 'Please link your DigiDhan bank account first.', [
                 { text: 'Cancel', style: 'cancel' },
@@ -38,8 +55,14 @@ export const Home = () => {
         if (balanceVisible) {
             Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setBalanceVisible(false));
         } else {
-            setBalanceVisible(true);
-            Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+            // Check if UPI PIN is set — if so, require verification
+            const pin = await StorageService.getUpiPin(bankAccountNo);
+            if (pin) {
+                const account = bankAccounts.find((a: any) => a.accountNumber === bankAccountNo);
+                navigation.navigate('SetUpiPin', { account: account || { accountNumber: bankAccountNo }, mode: 'verify', source: 'checkBalance' });
+            } else {
+                showToast('Please set a UPI PIN first', 'warning');
+            }
         }
     };
 
@@ -52,7 +75,7 @@ export const Home = () => {
         { icon: <RefreshCw color="#2563EB" size={24} />, label: t('sync_now'), onPress: syncTransactions },
         { icon: <Landmark color="#2563EB" size={24} />, label: bankAccountNo ? 'Bank Linked' : t('add_bank'), onPress: () => navigation.navigate('AddBank') },
         { icon: <Eye color="#2563EB" size={24} />, label: t('check_balance'), onPress: toggleBalance },
-        { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('Wallet') },
+        { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('SelfTransfer') },
     ];
 
     const billActions = [
@@ -71,8 +94,19 @@ export const Home = () => {
                 {/* Header */}
                 <View className="flex-row justify-between items-center mb-6">
                     <View>
-                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
-                        <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user?.name}</Text>
+                        {user ? (
+                            <>
+                                <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
+                                <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user.name}</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">You're not logged in</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                                    <Text className="text-lg font-bold text-primary dark:text-blue-400">Login / Sign Up →</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                     <TouchableOpacity
                         onPress={() => setOfflineMode(!isOfflineMode)}
@@ -94,11 +128,20 @@ export const Home = () => {
                     <View className="flex-row justify-between items-start mb-6">
                         <View>
                             <Text className="text-white/80 font-medium mb-1">{t('offline_wallet')}</Text>
-                            <Text className="text-4xl font-bold text-white">₹{offlineWallet?.balance.toFixed(2)}</Text>
+                            <Text className="text-4xl font-bold text-white">
+                                {walletBalanceVisible ? `₹${offlineWallet?.balance.toFixed(2)}` : '••••••'}
+                            </Text>
                         </View>
-                        <View className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
-                            <Wallet color="white" size={24} />
-                        </View>
+                        <TouchableOpacity
+                            onPress={() => setWalletBalanceVisible(!walletBalanceVisible)}
+                            className="bg-white/20 p-2 rounded-2xl backdrop-blur-md"
+                        >
+                            {walletBalanceVisible ? (
+                                <EyeOff color="white" size={24} />
+                            ) : (
+                                <Eye color="white" size={24} />
+                            )}
+                        </TouchableOpacity>
                     </View>
                     <View className="flex-row items-center bg-black/10 self-start px-3 py-1.5 rounded-full border border-white/10">
                         <Text className="text-white/90 text-xs font-medium">Wallet ID: •••• {offlineWallet?.id.slice(-4)}</Text>

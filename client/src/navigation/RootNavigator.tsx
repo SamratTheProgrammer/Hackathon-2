@@ -13,6 +13,7 @@ import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { AddBank } from '../screens/AddBank';
 import { BankDetails } from '../screens/BankDetails';
 import { SetUpiPin } from '../screens/SetUpiPin';
+import { SelfTransfer } from '../screens/SelfTransfer';
 import { useOffline } from '../services/OfflineContext';
 import { useTheme } from '../services/ThemeContext';
 import { View, ActivityIndicator, Platform } from 'react-native';
@@ -119,9 +120,15 @@ export const RootNavigator = () => {
                         <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
                         <Stack.Screen name="BankDetails" component={BankDetails} options={{ headerShown: false }} />
                         <Stack.Screen name="SetUpiPin" component={SetUpiPin} options={{ headerShown: false }} />
+                        <Stack.Screen name="SelfTransfer" component={SelfTransfer} options={{ headerShown: false }} />
+                        <Stack.Screen name="Login" component={LoginScreen} />
+                        <Stack.Screen name="Signup" component={SignupScreen} />
+                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
                     </>
                 ) : (
                     <>
+                        <Stack.Screen name="Main" component={TabNavigator} />
+                        <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
                         <Stack.Screen name="Login" component={LoginScreen} />
                         <Stack.Screen name="Signup" component={SignupScreen} />
                         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
