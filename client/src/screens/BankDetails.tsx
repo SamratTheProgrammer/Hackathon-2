@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { StorageService } from '../storage';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { useOffline } from '../services/OfflineContext';
+import { useToast } from '../components/ui/Toast';
 
 export const BankDetails = () => {
     const navigation = useNavigation();
@@ -15,6 +16,7 @@ export const BankDetails = () => {
     const [pinExists, setPinExists] = useState(false);
     const [isBalanceVisible, setIsBalanceVisible] = useState(false);
     const { unlinkBankAccount } = useOffline();
+    const { showToast } = useToast();
 
     useEffect(() => {
         if (!account) {
@@ -142,9 +144,10 @@ export const BankDetails = () => {
                                     onPress: async () => {
                                         const success = await unlinkBankAccount(account.accountNumber);
                                         if (success) {
-                                            navigation.goBack();
+                                            showToast('Bank account removed successfully', 'success');
+                                            (navigation as any).navigate('Main', { screen: 'Home' });
                                         } else {
-                                            Alert.alert('Error', 'Could not remove bank account at this time.');
+                                            showToast('Could not remove bank account', 'error');
                                         }
                                     }
                                 }

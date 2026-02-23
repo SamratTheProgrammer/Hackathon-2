@@ -4,20 +4,22 @@ import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper, LoginPrompt } from '../components/ui';
 import { Wallet as WalletIcon, RefreshCw, ArrowRight, ShieldCheck } from 'lucide-react-native';
+import { useToast } from '../components/ui/Toast';
 
 export const Wallet = () => {
     const { user, offlineWallet, bankBalance, loadOfflineCash, syncTransactions, transactions, isOfflineMode } = useOffline();
+    const { showToast } = useToast();
     const [loadAmount, setLoadAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLoad = async () => {
         const amt = parseFloat(loadAmount);
         if (!amt || amt <= 0) {
-            Alert.alert('Invalid Amount', 'Please enter a valid amount');
+            showToast('Please enter a valid amount', 'warning');
             return;
         }
         if (amt > bankBalance) {
-            Alert.alert('Insufficient Balance', 'Your bank account balance is low.');
+            showToast('Insufficient bank balance to load cash', 'error');
             return;
         }
 
@@ -26,23 +28,23 @@ export const Wallet = () => {
             const success = await loadOfflineCash(amt);
             setIsLoading(false);
             if (success) {
-                Alert.alert('Success', `Loaded ₹${amt} to Offline Wallet`);
+                showToast(`Loaded ₹${amt} to Offline Wallet`, 'success');
                 setLoadAmount('');
             } else {
-                Alert.alert('Error', 'Failed to load cash.');
+                showToast('Failed to load cash. Please try again.', 'error');
             }
         }, 1000);
     };
 
     const handleSync = async () => {
         if (isOfflineMode) {
-            Alert.alert('Offline', 'Please disable Offline Mode to sync.');
+            showToast('Please disable Offline Mode to sync.', 'warning');
             return;
         }
         setIsLoading(true);
         await syncTransactions();
         setIsLoading(false);
-        Alert.alert('Synced', 'All transactions are up to date.');
+        showToast('All transactions are up to date.', 'success');
     };
 
     const pendingCount = transactions.filter(t => t.status === 'pending').length;
@@ -64,18 +66,6 @@ export const Wallet = () => {
                         </View>
                         <View className="bg-secondary/10 dark:bg-secondary/20 p-2 rounded-xl">
                             <WalletIcon color="#10B981" size={28} />
-                        </View>
-                    </View>
-
-                    <View className="flex-row justify-between items-center bg-neutral-bg dark:bg-neutral-900 p-4 rounded-xl border border-neutral-border dark:border-neutral-700">
-                        <View>
-                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-xs mb-1">Wallet Limit</Text>
-                            <Text className="text-neutral-text dark:text-white font-bold">₹{offlineWallet?.limits.maxBalance}</Text>
-                        </View>
-                        <View className="h-8 w-[1px] bg-neutral-border dark:bg-neutral-600 mx-4" />
-                        <View>
-                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-xs mb-1">Daily Remaining</Text>
-                            <Text className="text-neutral-text dark:text-white font-bold">₹{offlineWallet?.limits.dailyLimit}</Text>
                         </View>
                     </View>
                 </Card>

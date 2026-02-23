@@ -63,7 +63,7 @@ export const SetUpiPin = () => {
                 // Return to BankDetails with verification success
                 (navigation as any).navigate('BankDetails', { account, verified: true });
             } else {
-                Alert.alert('Incorrect PIN', 'The UPI PIN you entered is incorrect.');
+                showToast('The UPI PIN you entered is incorrect.', 'error');
                 setPin('');
             }
             return;
@@ -89,7 +89,7 @@ export const SetUpiPin = () => {
             // Save PIN
             await StorageService.saveUpiPin(account.accountNumber, pin);
             showToast('UPI PIN Set Successfully!', 'success');
-            (navigation as any).navigate('BankDetails', { account });
+            (navigation as any).navigate('Main', { screen: 'Home' });
         }
     };
 
@@ -150,7 +150,7 @@ export const SetUpiPin = () => {
                         For bank account ending in {account?.accountNumber?.slice(-4)}
                     </Text>
 
-                    {renderDots(step === 'create' ? pin : confirmPin)}
+                    {renderDots(step === 'confirm' ? confirmPin : pin)}
                 </View>
             </View>
 
@@ -183,15 +183,15 @@ export const SetUpiPin = () => {
 
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={(step === 'create' ? pin.length : confirmPin.length) !== 6}
-                        className={`w-16 h-16 rounded-full items-center justify-center ${(step === 'create' ? pin.length : confirmPin.length) === 6
+                        disabled={(step === 'confirm' ? confirmPin.length : pin.length) !== 6}
+                        className={`w-16 h-16 rounded-full items-center justify-center ${(step === 'confirm' ? confirmPin.length : pin.length) === 6
                             ? 'bg-primary dark:bg-blue-600'
                             : 'bg-neutral-300 dark:bg-neutral-800'
                             }`}
                     >
                         <ArrowRight
                             size={28}
-                            color={(step === 'create' ? pin.length : confirmPin.length) === 6 ? "#FFFFFF" : "#94A3B8"}
+                            color={(step === 'confirm' ? confirmPin.length : pin.length) === 6 ? "#FFFFFF" : "#94A3B8"}
                         />
                     </TouchableOpacity>
                 </View>
