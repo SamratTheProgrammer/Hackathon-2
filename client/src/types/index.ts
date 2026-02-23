@@ -42,4 +42,5 @@ export type AppState = {
     transactions: Transaction[];
     isOfflineMode: boolean; // Dev toggle
     bankAccountNo?: string | null;
+    bankAccounts: any[];
 };

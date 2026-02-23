@@ -14,7 +14,7 @@ interface ContextType extends AppState {
     syncTransactions: () => Promise<void>;
     isLoading: boolean;
     login: (phone: string, pin: string) => Promise<boolean>;
-    linkBankAccount: (accountNo: string, email: string, pass: string) => Promise<boolean>;
+    linkBankAccount: (accountNo: string, email: string) => Promise<boolean>;
     logout: () => void;
 }
 
@@ -24,6 +24,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [user, setUser] = useState<UserProfile | null>(null);
     const [bankBalance, setBankBalance] = useState(0);
     const [bankAccountNo, setBankAccountNo] = useState<string | null>(null);
+    const [bankAccounts, setBankAccounts] = useState<any[]>([]);
     const [offlineWallet, setOfflineWallet] = useState<OfflineWallet | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -47,6 +48,18 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (storedUser) setUser(storedUser);
         setBankBalance(storedBalance);
         setBankAccountNo(storedAccountNo);
+
+        // Load bank accounts if token exists
+        let accounts: any[] = [];
+        if (storedAccountNo) {
+            accounts.push({
+                bankName: 'DigitalDhan Bank', // Mock or fetched
+                accountNumber: storedAccountNo,
+                balance: storedBalance
+            });
+        }
+        setBankAccounts(accounts);
+
         setOfflineWallet(storedWallet || { id: 'w1', balance: 0, lastSyncedAt: new Date().toISOString(), limits: DEFAULT_LIMITS });
 
         // Load offline transactions + fetch bank transactions if token exists
@@ -175,10 +188,10 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setUser(null);
     };
 
-    const linkBankAccount = async (accountNumber: string, email: string, pass: string): Promise<boolean> => {
+    const linkBankAccount = async (accountNumber: string, email: string): Promise<boolean> => {
         try {
-            // 1. Login to get token
-            const loginResponse = await MockApi.login(email, pass);
+            // 1. Passwordless Login to get token for this account
+            const loginResponse = await MockApi.loginViaAccount(accountNumber);
             const token = loginResponse.token;
 
             // 2. Verify Bank Account
@@ -193,6 +206,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             setBankAccountNo(verificationResponse.account.accountNumber);
             StorageService.saveBankAccountNo(verificationResponse.account.accountNumber);
+
+            setBankAccounts(prev => [...prev, {
+                bankName: verificationResponse.account.bankName || 'State Bank of India',
+                accountNumber: verificationResponse.account.accountNumber,
+                balance: verificationResponse.account.balance
+            }]);
 
             // Fetch recent transactions
             const bankTxns = await MockApi.fetchTransactions(token);
@@ -223,7 +242,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     return (
         <OfflineContext.Provider value={{
-            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo,
+            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo, bankAccounts,
             setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions, login, linkBankAccount, logout
         }}>
             {children}

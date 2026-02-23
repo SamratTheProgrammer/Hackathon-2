@@ -74,6 +74,25 @@ export const MockApi = {
         }
     },
 
+    loginViaAccount: async (accountNumber: string): Promise<any> => {
+        try {
+            const API_URL = 'http://localhost:5000/api';
+            const response = await fetch(`${API_URL}/auth/login-via-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Login failed');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Login Via Account API Error:', error);
+            throw error;
+        }
+    },
+
     fetchTransactions: async (token: string): Promise<any[]> => {
         try {
             const API_URL = 'http://localhost:5000/api';
@@ -112,39 +131,4 @@ export const MockApi = {
         }
     },
 
-    sendOtp: async (accountNumber: string, token: string = ''): Promise<any> => {
-        try {
-            const API_URL = 'http://localhost:5000/api';
-            const response = await fetch(`${API_URL}/user/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountNumber }) // No token check for now as per flow
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Failed to send OTP');
-            }
-            return await response.json();
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    verifyOtp: async (accountNumber: string, otp: string): Promise<boolean> => {
-        try {
-            const API_URL = 'http://localhost:5000/api';
-            const response = await fetch(`${API_URL}/user/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountNumber, otp })
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Invalid OTP');
-            }
-            return true;
-        } catch (error) {
-            throw error;
-        }
-    }
 };

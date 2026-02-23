@@ -32,32 +32,20 @@ async function testFullFlow() {
         if (lookupData.email !== email) throw new Error('Email mismatch');
         console.log(`   [OK] Found Email: ${lookupData.email}`);
 
-        // 3. Send OTP
-        console.log('3. Send OTP...');
-        const sendOtpRes = await fetch(`${API_URL}/user/send-otp`, {
+        // 3 & 4. (Skipped) OTP handled by frontend EmailJS
+        console.log('3 & 4. (Skipped) OTP handled by frontend EmailJS');
+
+        // New Flow: Passwordless Login via Account Number
+        console.log('-> Login Via Account...');
+        const loginRes = await fetch(`${API_URL}/auth/login-via-account`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accountNumber })
         });
-        const sendOtpData = await sendOtpRes.json();
-        if (!sendOtpRes.ok) throw new Error(sendOtpData.message);
-        // Assuming dev_otp is returned for test/demo env
-        const otp = sendOtpData.dev_otp;
-        if (!otp) console.warn('   [WARN] No Dev OTP returned. Real email sent?');
-        else console.log(`   [OK] Got OTP: ${otp}`);
-
-        if (otp) {
-            // 4. Verify OTP
-            console.log('4. Verify OTP...');
-            const verifyRes = await fetch(`${API_URL}/user/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountNumber, otp })
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.message);
-            console.log('   [OK] OTP Verified');
-        }
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) throw new Error(loginData.message);
+        const newToken = loginData.token;
+        console.log('   [OK] Token Received');
 
         // 5. Link Account (Verify Bank Account endpoint)
         console.log('5. Link Account (Verify Ownership)...');
