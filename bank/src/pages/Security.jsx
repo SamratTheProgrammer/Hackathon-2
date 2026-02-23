@@ -13,6 +13,7 @@ const Security = () => {
         autoLogout: true
     });
     const [devices, setDevices] = useState([]);
+    const [linkedApps, setLinkedApps] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Password Change State
@@ -32,12 +33,14 @@ const Security = () => {
 
     const fetchData = async () => {
         try {
-            const [settingsRes, devicesRes] = await Promise.all([
+            const [settingsRes, devicesRes, linkedAppsRes] = await Promise.all([
                 axios.get(`${API_URL}/security/settings`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API_URL}/security/devices`, { headers: { Authorization: `Bearer ${token}` } })
+                axios.get(`${API_URL}/security/devices`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API_URL}/user/linked-apps`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
             setSettings(settingsRes.data);
             setDevices(devicesRes.data);
+            setLinkedApps(linkedAppsRes.data);
         } catch (error) {
             console.error("Error fetching security data", error);
             // toast.error("Failed to load security settings");
@@ -190,6 +193,35 @@ const Security = () => {
                                     Remove
                                 </button>
                             )}
+                        </div>
+                    ))
+                )}
+            </Card>
+
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-4">Connected Applications</h2>
+            <Card className="divide-y divide-gray-100 dark:divide-gray-800 p-0">
+                {linkedApps.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500">No applications connected to this account.</div>
+                ) : (
+                    linkedApps.map((app) => (
+                        <div key={app.linkId} className="p-6 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
+                                    <Smartphone size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white">{app.appUser.name} <span className="text-xs font-normal text-gray-500 ml-2">(Offline Payment App)</span></h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Email: {app.appUser.email}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Mobile: {app.appUser.mobile}
+                                    </p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                        Linked on {new Date(app.linkedAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     ))
                 )}

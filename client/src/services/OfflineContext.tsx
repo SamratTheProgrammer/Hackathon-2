@@ -3,6 +3,7 @@ import { Alert, Platform } from 'react-native';
 import { AppState, OfflineWallet, Transaction, TransactionType, UserProfile } from '../types';
 import { StorageService } from '../storage';
 import { MockApi } from './api';
+import { bluetoothService } from './BluetoothService';
 
 const DEFAULT_LIMITS = { maxBalance: 2000, maxPerTransaction: 500, dailyLimit: 2000 };
 const API_URL = 'http://localhost:5000/api';
@@ -480,6 +481,15 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    const handleSetOfflineMode = async (isOffline: boolean) => {
+        setIsOfflineMode(isOffline);
+        if (isOffline) {
+            await bluetoothService.requestPermissions();
+            // Automatically turn on bluetooth when switching to offline mode
+            bluetoothService.enableBluetooth();
+        }
+    };
+
     const unlinkBankAccount = async (accountNumber: string): Promise<boolean> => {
         try {
             setBankAccounts(prev => prev.filter(a => a.accountNumber !== accountNumber));
@@ -497,7 +507,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (
         <OfflineContext.Provider value={{
             user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo, bankAccounts,
-            setOfflineMode: setIsOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions,
+            setOfflineMode: handleSetOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions,
             login, signup, updateUserProfile, linkBankAccount, unlinkBankAccount, logout
         }}>
             {children}

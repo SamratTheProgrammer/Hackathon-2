@@ -255,4 +255,48 @@ router.put('/profile', authenticate, (req, res) => {
     });
 });
 
+// Get linked offline payment app accounts
+router.get('/linked-apps', authenticate, async (req, res) => {
+    try {
+        console.log('GET /linked-apps called for userId:', req.userId);
+
+        // Find the current bank user to get their account number
+        const bankUser = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { accountNumber: true }
+        });
+
+        if (!bankUser || !bankUser.accountNumber) {
+            return res.status(404).json({ message: 'No bank account number found for this user' });
+        }
+
+        // Find linked offline payment app users pointing to this account number
+        const linkedAccounts = await prisma.linkedAccount.findMany({
+            where: { accountNumber: bankUser.accountNumber },
+            include: {
+                appUser: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        mobile: true,
+                        createdAt: true
+                    }
+                }
+            }
+        });
+
+        const linkedApps = linkedAccounts.map(link => ({
+            linkId: link.id,
+            linkedAt: link.createdAt,
+            appUser: link.appUser
+        }));
+
+        res.json(linkedApps);
+    } catch (error) {
+        console.error('Error fetching linked apps:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 module.exports = router;

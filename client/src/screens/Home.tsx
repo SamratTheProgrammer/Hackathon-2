@@ -93,21 +93,19 @@ export const Home = () => {
             >
                 {/* Header */}
                 <View className="flex-row justify-between items-center mb-6">
-                    <View>
-                        {user ? (
-                            <>
-                                <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
-                                <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user.name}</Text>
-                            </>
-                        ) : (
-                            <>
-                                <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">You're not logged in</Text>
-                                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                                    <Text className="text-lg font-bold text-primary dark:text-blue-400">Login / Sign Up →</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                    </View>
+                    {user ? (
+                        <View>
+                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
+                            <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user.name}</Text>
+                        </View>
+                    ) : (
+                        <View>
+                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome') || 'Welcome'},</Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('Login')} className="mt-1">
+                                <Text className="text-xl font-bold text-primary dark:text-blue-400">{t('login_to_continue') || 'Login / Signup'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     <TouchableOpacity
                         onPress={() => setOfflineMode(!isOfflineMode)}
                         className={`p-2 rounded-full border ${isOfflineMode ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700' : 'bg-white dark:bg-neutral-800 border-primary/20 shadow-sm'} `}

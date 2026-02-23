@@ -60,6 +60,17 @@ class BluetoothService {
         // For this demo, we will focus on scanning. A real offline payment system would use a library like react-native-nearby-messages or platform specific APIs.
         console.log('Advertising not effectively supported in pure ble-plx for all android versions without extra setup.');
     }
+
+    async enableBluetooth(): Promise<boolean> {
+        if (!this.manager) return false;
+        try {
+            await this.manager.enable();
+            return true;
+        } catch (error) {
+            console.log('Could not enable Bluetooth:', error);
+            return false;
+        }
+    }
 }
 
 export const bluetoothService = new BluetoothService();
