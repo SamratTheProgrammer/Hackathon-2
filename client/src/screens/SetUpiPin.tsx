@@ -4,11 +4,13 @@ import { ScreenWrapper } from '../components/ui';
 import { ArrowLeft, ArrowRight, Delete, ShieldCheck } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StorageService } from '../storage';
+import { useToast } from '../components/ui/Toast';
 
 export const SetUpiPin = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const account = (route.params as any)?.account;
+    const { showToast } = useToast();
 
     const mode = (route.params as any)?.mode || 'create'; // 'create' | 'change' | 'verify'
 
@@ -86,9 +88,8 @@ export const SetUpiPin = () => {
 
             // Save PIN
             await StorageService.saveUpiPin(account.accountNumber, pin);
-            Alert.alert('Success', 'UPI PIN Set Successfully!', [
-                { text: 'OK', onPress: () => (navigation as any).navigate('BankDetails', { account }) } // Goes back to BankDetails
-            ]);
+            showToast('UPI PIN Set Successfully!', 'success');
+            (navigation as any).navigate('BankDetails', { account });
         }
     };
 
