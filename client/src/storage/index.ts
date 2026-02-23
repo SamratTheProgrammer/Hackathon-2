@@ -11,6 +11,7 @@ const KEYS = {
     BANK_ACCOUNT_NO: 'bank_account_no',
     AUTH_TOKEN: 'auth_token',
     APP_CREDENTIALS: 'app_credentials',
+    UPI_PINS: 'upi_pins', // Store map of accountNumber -> pin
 };
 
 export const StorageService = {
@@ -116,5 +117,40 @@ export const StorageService = {
         const json = await AsyncStorage.getItem(KEYS.APP_CREDENTIALS);
         return json ? JSON.parse(json) : null;
     },
+
+    async saveUpiPin(accountNumber: string, pin: string): Promise<void> {
+        try {
+            const existing = await AsyncStorage.getItem(KEYS.UPI_PINS);
+            const pins = existing ? JSON.parse(existing) : {};
+            pins[accountNumber] = pin;
+            await AsyncStorage.setItem(KEYS.UPI_PINS, JSON.stringify(pins));
+        } catch (e) {
+            console.error('Failed to save UPI PIN', e);
+        }
+    },
+
+    async getUpiPin(accountNumber: string): Promise<string | null> {
+        try {
+            const existing = await AsyncStorage.getItem(KEYS.UPI_PINS);
+            if (!existing) return null;
+            const pins = JSON.parse(existing);
+            return pins[accountNumber] || null;
+        } catch (e) {
+            console.error('Failed to get UPI PIN', e);
+            return null;
+        }
+    },
+
+    async deleteUpiPin(accountNumber: string): Promise<void> {
+        try {
+            const existing = await AsyncStorage.getItem(KEYS.UPI_PINS);
+            if (!existing) return;
+            const pins = JSON.parse(existing);
+            delete pins[accountNumber];
+            await AsyncStorage.setItem(KEYS.UPI_PINS, JSON.stringify(pins));
+        } catch (e) {
+            console.error('Failed to delete UPI PIN', e);
+        }
+    }
 };
 

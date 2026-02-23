@@ -1,0 +1,70 @@
+﻿node : node:internal/mo
+dules/package_json_read
+er:173
+At line:1 char:1
++ node src/index.js 2> 
+error_log.txt
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (node:internal   
+ /m...json_reader:1    
+73:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  const result = module
+sBinding.getNearestPare
+ntPackageJSON(checkPath
+);
+                       
+         ^
+
+Error: Invalid package 
+config \\?\C:\Users\bar
+sh\Desktop\Hackathon-2\
+server\node_modules\.pr
+isma\client\package.jso
+n.
+    at Object.getNeares
+tParentPackageJSON (nod
+e:internal/modules/pack
+age_json_reader:173:33)
+    at Object..js (node
+:internal/modules/cjs/l
+oader:1909:29)
+    at Module.load (nod
+e:internal/modules/cjs/
+loader:1525:32)
+    at Module._load (no
+de:internal/modules/cjs
+/loader:1327:12)
+    at TracingChannel.t
+raceSync (node:diagnost
+ics_channel:328:14)
+    at wrapModuleLoad (
+node:internal/modules/c
+js/loader:245:24)
+    at Module.require (
+node:internal/modules/c
+js/loader:1548:12)
+    at require (node:in
+ternal/modules/helpers:
+152:16)
+    at 
+Object.<anonymous> (C:\
+Users\barsh\Desktop\Hac
+kathon-2\server\node_mo
+dules\@prisma\client\de
+fault.js:2:6)
+    at Module._compile 
+(node:internal/modules/
+cjs/loader:1804:14) {
+  code: 'ERR_INVALID_PA
+CKAGE_CONFIG'
+}
+
+Node.js v24.13.1

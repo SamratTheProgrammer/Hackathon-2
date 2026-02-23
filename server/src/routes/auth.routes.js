@@ -167,7 +167,15 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-
+        // Generate an account number for legacy users if they don't have one
+        if (!user.accountNumber) {
+            const newAccountNumber = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { accountNumber: newAccountNumber }
+            });
+            user.accountNumber = newAccountNumber;
+        }
 
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
@@ -177,6 +185,28 @@ router.post('/login', async (req, res) => {
         res.status(200).json({ message: 'Login successful', token, user });
     } catch (error) {
         console.error('Login Error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Passwordless Login (for UPI Bank Linking after OTP)
+router.post('/login-via-account', async (req, res) => {
+    try {
+        const { accountNumber } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { accountNumber } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        // Track Device
+        await trackDevice(req, user, token);
+
+        res.status(200).json({ message: 'Login successful via account', token, user });
+    } catch (error) {
+        console.error('Login Via Account Error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });

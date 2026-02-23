@@ -18,7 +18,9 @@ interface ContextType extends AppState {
     login: (email: string, password: string) => Promise<boolean>;
     signup: (data: { name: string; email: string; password: string; mobile: string; dob: string }) => Promise<boolean>;
     updateUserProfile: (data: { name?: string }) => Promise<boolean>;
-    linkBankAccount: (accountNo: string, email: string, pass: string) => Promise<boolean>;
+    linkBankAccount: (accountNo: string, email: string, pass?: string) => Promise<boolean>;
+    unlinkBankAccount: (accountNo: string) => Promise<boolean>;
+    bankAccounts: any[];
     logout: () => void;
 }
 
@@ -28,6 +30,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [user, setUser] = useState<UserProfile | null>(null);
     const [bankBalance, setBankBalance] = useState(0);
     const [bankAccountNo, setBankAccountNo] = useState<string | null>(null);
+    const [bankAccounts, setBankAccounts] = useState<any[]>([]);
     const [offlineWallet, setOfflineWallet] = useState<OfflineWallet | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -51,6 +54,31 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (storedUser) setUser(storedUser);
         setBankBalance(storedBalance);
         setBankAccountNo(storedAccountNo);
+
+        // Load bank accounts if token exists
+        let accounts: any[] = [];
+        if (storedAccountNo) {
+            let ownerName = '';
+            // Fetch the real account holder name from the bank DB
+            if (storedToken) {
+                try {
+                    const verifyRes = await MockApi.verifyBankAccount(storedAccountNo, storedToken);
+                    if (verifyRes?.account?.name) {
+                        ownerName = verifyRes.account.name;
+                    }
+                } catch (e) {
+                    console.error('Error fetching account owner name:', e);
+                }
+            }
+            accounts.push({
+                bankName: 'DigitalDhan Bank',
+                accountNumber: storedAccountNo,
+                balance: storedBalance,
+                ownerName: ownerName,
+            });
+        }
+        setBankAccounts(accounts);
+
         setOfflineWallet(storedWallet || { id: 'w1', balance: 0, lastSyncedAt: new Date().toISOString(), limits: DEFAULT_LIMITS });
 
         // Load offline transactions + fetch bank transactions if bank is linked
@@ -321,12 +349,31 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // LINK BANK — connects DigiDhan bank account to this app
     // ============================================================
 
-    const linkBankAccount = async (accountNumber: string, email: string, pass: string): Promise<boolean> => {
+    const linkBankAccount = async (accountNumber: string, email: string, pass?: string): Promise<boolean> => {
+        console.log(`[linkBankAccount] Starting link for account: ${accountNumber}, email: ${email}`);
         try {
-            const loginResponse = await MockApi.login(email, pass);
+            console.log(`[linkBankAccount] 1. Calling login API...`);
+            let loginResponse;
+            try {
+                loginResponse = pass
+                    ? await MockApi.login(email, pass)
+                    : await MockApi.loginViaAccount(accountNumber);
+                console.log(`[linkBankAccount] 1. Login successful. Token received.`);
+            } catch (err: any) {
+                console.error(`[linkBankAccount] API /login Failed:`, err);
+                throw new Error(`Login failed: ${err.message}`);
+            }
             const token = loginResponse.token;
 
-            const verificationResponse = await MockApi.verifyBankAccount(accountNumber, token);
+            console.log(`[linkBankAccount] 2. Calling verifyBankAccount API...`);
+            let verificationResponse;
+            try {
+                verificationResponse = await MockApi.verifyBankAccount(accountNumber, token);
+                console.log(`[linkBankAccount] 2. Verification successful. Account details mapped.`);
+            } catch (err: any) {
+                console.error(`[linkBankAccount] API /verify-bank-account Failed:`, err);
+                throw new Error(`Verification failed: ${err.message}`);
+            }
 
             await StorageService.saveBankToken(token);
 
@@ -336,6 +383,17 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setBankAccountNo(verificationResponse.account.accountNumber);
             StorageService.saveBankAccountNo(verificationResponse.account.accountNumber);
 
+            setBankAccounts(prev => {
+                // Avoid duplicates
+                if (prev.some(a => a.accountNumber === verificationResponse.account.accountNumber)) return prev;
+                return [...prev, {
+                    bankName: verificationResponse.account.bankName || 'DigitalDhan Bank',
+                    accountNumber: verificationResponse.account.accountNumber,
+                    balance: verificationResponse.account.balance,
+                    ownerName: verificationResponse.account.name || ''
+                }];
+            });
+
             const updatedUser = {
                 ...user!,
                 accountNumber: verificationResponse.account.accountNumber,
@@ -343,7 +401,10 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setUser(updatedUser);
             await StorageService.saveUserProfile(updatedUser);
 
+            console.log(`[linkBankAccount] 3. Fetching transactions...`);
             const bankTxns = await MockApi.fetchTransactions(token);
+            console.log(`[linkBankAccount] 3. Bank transactions fetched (${bankTxns.length})`);
+
             const formattedBankTxns = bankTxns.map((t: any) => ({
                 id: t.id,
                 type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
@@ -357,13 +418,15 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }));
 
             setTransactions(prev => {
-                const offlineOnly = prev.filter(t => t.isOffline);
-                return [...formattedBankTxns, ...offlineOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const map = new Map();
+                [...formattedBankTxns, ...prev.filter(t => t.isOffline)].forEach(t => map.set(t.id, t));
+                return Array.from(map.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             });
 
+            console.log(`[linkBankAccount] Linking COMPLETE!`);
             return true;
         } catch (error: any) {
-            console.error(error);
+            console.error('[linkBankAccount] FAILED:', error);
             Alert.alert('Link Failed', error.message || 'Could not verify account');
             return false;
         }
@@ -378,11 +441,25 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    const unlinkBankAccount = async (accountNumber: string): Promise<boolean> => {
+        try {
+            setBankAccounts(prev => prev.filter(a => a.accountNumber !== accountNumber));
+            if (bankAccountNo === accountNumber) {
+                setBankAccountNo(null);
+                setBankBalance(0);
+            }
+            return true;
+        } catch (error) {
+            console.error('[unlinkBankAccount] Failed', error);
+            return false;
+        }
+    };
+
     return (
         <OfflineContext.Provider value={{
-            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo,
+            user, bankBalance, offlineWallet, transactions, isOfflineMode, isLoading, bankAccountNo, bankAccounts,
             setOfflineMode: handleSetOfflineMode, loadOfflineCash, sendMoney, receiveMoney, syncTransactions,
-            login, signup, updateUserProfile, linkBankAccount, logout
+            login, signup, updateUserProfile, linkBankAccount, unlinkBankAccount, logout
         }}>
             {children}
         </OfflineContext.Provider>

@@ -41,8 +41,22 @@ model AppUser {
   password    String
   mobile      String
   dob         DateTime?
+  linkedAccounts LinkedAccount[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Stores the linked bank accounts and secure UPI PINs for mobile App users
+model LinkedAccount {
+  id            String   @id @default(uuid())
+  appUserId     String
+  appUser       AppUser  @relation(fields: [appUserId], references: [id])
+  accountNumber String   
+  upiPin        String?  // Hashed UPI PIN for this specific bank account
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([appUserId, accountNumber]) // A user can link a specific bank account only once
 }
 
 model Device {

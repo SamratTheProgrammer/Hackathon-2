@@ -178,17 +178,14 @@ router.post('/lookup-account', async (req, res) => {
 
         const userWithAccount = await prisma.user.findUnique({
             where: { accountNumber: accountNumber },
-            select: { email: true }
+            select: { id: true, name: true, email: true, mobile: true, profilePhoto: true }
         });
 
         if (!userWithAccount) {
             return res.status(404).json({ message: 'Account not found' });
         }
 
-        // Output email directly for demo purposes if sending fails
-        // res.json({ email: userWithAccount.email }); 
-        // We still return email for the UI to show "Sent to x***@..."
-        res.json({ email: userWithAccount.email });
+        res.json(userWithAccount);
 
     } catch (error) {
         console.error('Account lookup error:', error);
@@ -196,87 +193,7 @@ router.post('/lookup-account', async (req, res) => {
     }
 });
 
-// OTP Storage (In-memory for demo)
-const otpStore = {}; // { accountNumber: { otp: '123456', expires: 1234567890 } }
-
-const nodemailer = require('nodemailer');
-const getTransporter = () => {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-};
-
-// Send OTP
-router.post('/send-otp', async (req, res) => {
-    try {
-        const { accountNumber } = req.body;
-        if (!accountNumber) return res.status(400).json({ message: 'Account number required' });
-
-        const user = await prisma.user.findUnique({ where: { accountNumber } });
-        if (!user) return res.status(404).json({ message: 'Account not found' });
-
-        // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-        otpStore[accountNumber] = { otp, expires };
-        console.log(`[OTP] Generated for ${accountNumber}: ${otp}`); // Log for testing
-
-        // Send Email
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: user.email,
-            subject: 'Bank Account Verification OTP',
-            text: `Your OTP for Bank Account Linking is: ${otp}. It expires in 5 minutes.`
-        };
-
-        const transporter = getTransporter();
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error('Email Error:', error);
-                // For Hackathon/Demo: Return OTP in response if email fails
-                return res.json({ message: 'OTP sent (simulated)', dev_otp: otp });
-            }
-            res.json({ message: 'OTP sent successfully' });
-        });
-
-    } catch (error) {
-        console.error('Send OTP Error:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-// Verify OTP
-router.post('/verify-otp', async (req, res) => {
-    try {
-        const { accountNumber, otp } = req.body;
-        if (!accountNumber || !otp) return res.status(400).json({ message: 'Missing fields' });
-
-        const record = otpStore[accountNumber];
-        if (!record) return res.status(400).json({ message: 'OTP not requested or expired' });
-
-        if (Date.now() > record.expires) {
-            delete otpStore[accountNumber];
-            return res.status(400).json({ message: 'OTP expired' });
-        }
-
-        if (record.otp !== otp) {
-            return res.status(400).json({ message: 'Invalid OTP' });
-        }
-
-        // OTP Valid
-        delete otpStore[accountNumber];
-        res.json({ message: 'OTP verified successfully' });
-
-    } catch (error) {
-        console.error('Verify OTP Error:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
+// OTP endpoints removed as they are now handled by EmailJS on the frontend
 
 const upload = require('../middleware/upload');
 const multer = require('multer');

@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLanguage } from '../services/LanguageContext';
 
 export const Home = () => {
-    const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo } = useOffline();
+    const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo, bankAccounts } = useOffline();
     const { t } = useLanguage();
     const navigation = useNavigation<any>();
     const [refreshing, setRefreshing] = React.useState(false);
@@ -114,53 +114,52 @@ export const Home = () => {
                     </View>
                 </LinearGradient>
 
-                {/* Bank Balance — Tap to Check */}
+                {/* Linked Bank Accounts (Hidden/Mocked when offline) */}
                 {!isOfflineMode && (
-                    <TouchableOpacity activeOpacity={0.7} onPress={toggleBalance}>
-                        <Card className="mb-8 p-0 overflow-hidden border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
-                            <View className="p-4 flex-row justify-between items-center">
-                                <View className="flex-1">
-                                    <View className="flex-row items-center mb-1">
-                                        <Landmark size={16} color="#2563EB" />
-                                        <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-sm ml-1.5">
-                                            {bankAccountNo ? 'DigiDhan Bank' : 'Bank Account'}
-                                        </Text>
-                                    </View>
-
-                                    {!bankAccountNo ? (
-                                        <Text className="text-primary dark:text-blue-400 font-semibold text-sm">
-                                            Tap to link your bank account →
-                                        </Text>
-                                    ) : balanceVisible ? (
-                                        <Animated.View style={{ opacity: fadeAnim }}>
-                                            <Text className="text-2xl font-bold text-neutral-text dark:text-white">
-                                                ₹{bankBalance.toFixed(2)}
+                    <View className="mb-8">
+                        <View className="flex-row justify-between items-center mb-4">
+                            <Text className="text-lg font-bold text-neutral-text dark:text-white">Linked Bank Accounts</Text>
+                        </View>
+                        {bankAccounts.length > 0 ? (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
+                                {bankAccounts.map((account: any, index: number) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        activeOpacity={0.7}
+                                        onPress={() => (navigation as any).navigate('BankDetails', { account })}
+                                    >
+                                        <Card className="px-5 py-4 min-w-[220px] rounded-2xl border border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
+                                            <View className="flex-row items-center mb-2">
+                                                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                                                    <Landmark size={20} color="#2563EB" />
+                                                </View>
+                                                <View>
+                                                    <Text className="text-neutral-text dark:text-white font-bold">{account.bankName || 'DigitalDhan Bank'}</Text>
+                                                    <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">•••• {account.accountNumber?.slice(-4)}</Text>
+                                                </View>
+                                            </View>
+                                            <Text className="text-xs text-neutral-text dark:text-neutral-300 font-medium uppercase tracking-widest mb-3 mt-1">
+                                                {account.ownerName || user?.name || 'Account Holder'}
                                             </Text>
-                                        </Animated.View>
-                                    ) : (
-                                        <Text className="text-base font-semibold text-neutral-text dark:text-white">
-                                            ₹ ••••••
-                                        </Text>
-                                    )}
-                                </View>
-
-                                <View className="flex-row items-center">
-                                    {bankAccountNo && (
-                                        <View className="bg-neutral-bg dark:bg-neutral-700 px-2.5 py-1 rounded-md mr-3">
-                                            <Text className="text-[10px] text-neutral-text-secondary dark:text-neutral-300 font-medium">
-                                                •• {bankAccountNo.slice(-4)}
+                                            <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-xs mb-1">Available Balance</Text>
+                                            <Text className="text-xl font-bold text-neutral-text dark:text-white">
+                                                {balanceVisible
+                                                    ? `₹${(account.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+                                                    : "••••••"}
                                             </Text>
-                                        </View>
-                                    )}
-                                    {balanceVisible ? (
-                                        <EyeOff size={20} color="#94A3B8" />
-                                    ) : (
-                                        <Eye size={20} color="#2563EB" />
-                                    )}
-                                </View>
-                            </View>
-                        </Card>
-                    </TouchableOpacity>
+                                        </Card>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <Card className="p-4 items-center border border-dashed border-neutral-border dark:border-neutral-700 bg-white/50 dark:bg-neutral-800/50 shadow-none">
+                                <Text className="text-neutral-text-secondary dark:text-neutral-400 mb-2">No bank accounts linked yet.</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('AddBank')}>
+                                    <Text className="text-primary font-bold">Link Account Now</Text>
+                                </TouchableOpacity>
+                            </Card>
+                        )}
+                    </View>
                 )}
 
                 {/* Quick Actions */}

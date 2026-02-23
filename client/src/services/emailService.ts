@@ -47,5 +47,6 @@ export const sendOtpEmail = async (email: string, name: string = 'User'): Promis
  * Verify OTP locally
  */
 export const verifyOtp = (enteredOtp: string, generatedOtp: string): boolean => {
-    return enteredOtp === generatedOtp;
+    if (!enteredOtp || !generatedOtp) return false;
+    return enteredOtp.trim() === generatedOtp.trim();
 };

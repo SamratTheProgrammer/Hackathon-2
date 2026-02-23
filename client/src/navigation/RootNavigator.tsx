@@ -11,6 +11,8 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { AddBank } from '../screens/AddBank';
+import { BankDetails } from '../screens/BankDetails';
+import { SetUpiPin } from '../screens/SetUpiPin';
 import { useOffline } from '../services/OfflineContext';
 import { useTheme } from '../services/ThemeContext';
 import { View, ActivityIndicator, Platform } from 'react-native';
@@ -111,11 +113,20 @@ export const RootNavigator = () => {
         <View className="flex-1 bg-neutral-bg dark:bg-neutral-900" onLayout={() => { }}>
             <StatusBar style={activeTheme === 'dark' ? 'light' : 'dark'} backgroundColor={activeTheme === 'dark' ? '#0F172A' : '#F8FAFC'} />
             <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: activeTheme === 'dark' ? '#0F172A' : '#F8FAFC' } }}>
-                <Stack.Screen name="Main" component={TabNavigator} />
-                <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="Signup" component={SignupScreen} />
-                <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                {user ? (
+                    <>
+                        <Stack.Screen name="Main" component={TabNavigator} />
+                        <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
+                        <Stack.Screen name="BankDetails" component={BankDetails} options={{ headerShown: false }} />
+                        <Stack.Screen name="SetUpiPin" component={SetUpiPin} options={{ headerShown: false }} />
+                    </>
+                ) : (
+                    <>
+                        <Stack.Screen name="Login" component={LoginScreen} />
+                        <Stack.Screen name="Signup" component={SignupScreen} />
+                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                    </>
+                )}
             </Stack.Navigator>
         </View>
     );

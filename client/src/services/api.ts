@@ -2,6 +2,15 @@ import { Transaction, UserProfile } from '../types';
 
 const API_URL = 'http://localhost:5000/api';
 
+const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000) => {
+    return Promise.race([
+        fetch(url, options),
+        new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs / 1000}s. Make sure the server is reachable.`)), timeoutMs)
+        )
+    ]);
+};
+
 export const MockApi = {
     fetchBankBalance: async (): Promise<number> => {
         return new Promise((resolve) => setTimeout(() => resolve(25000.50), 1000));
@@ -30,7 +39,7 @@ export const MockApi = {
 
     verifyBankAccount: async (accountNumber: string, token: string): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/user/verify-bank-account`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/verify-bank-account`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -51,7 +60,7 @@ export const MockApi = {
 
     login: async (email: string, password: string): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -67,6 +76,24 @@ export const MockApi = {
         }
     },
 
+    loginViaAccount: async (accountNumber: string): Promise<any> => {
+        try {
+            const response = await fetchWithTimeout(`${API_URL}/auth/login-via-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Login failed');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Login Via Account API Error:', error);
+            throw error;
+        }
+    },
+
     signup: async (formData: {
         name: string;
         email: string;
@@ -75,7 +102,7 @@ export const MockApi = {
         dob: string;
     }): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/auth/signup`, {
+            const response = await fetchWithTimeout(`${API_URL}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -93,7 +120,7 @@ export const MockApi = {
 
     forgotPassword: async (email: string): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/auth/forgot-password`, {
+            const response = await fetchWithTimeout(`${API_URL}/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
@@ -111,7 +138,7 @@ export const MockApi = {
 
     resetPassword: async (token: string, newPassword: string): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/auth/reset-password`, {
+            const response = await fetchWithTimeout(`${API_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, newPassword })
@@ -129,7 +156,7 @@ export const MockApi = {
 
     getProfile: async (token: string): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/user/me`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to fetch profile');
@@ -142,7 +169,7 @@ export const MockApi = {
 
     updateProfile: async (token: string, data: { name?: string }): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/user/profile`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -163,7 +190,7 @@ export const MockApi = {
 
     fetchTransactions: async (token: string): Promise<any[]> => {
         try {
-            const response = await fetch(`${API_URL}/transactions`, {
+            const response = await fetchWithTimeout(`${API_URL}/transactions`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -176,7 +203,7 @@ export const MockApi = {
 
     lookupAccount: async (accountNumber: string, token: string): Promise<{ email: string }> => {
         try {
-            const response = await fetch(`${API_URL}/user/lookup-account`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/lookup-account`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -197,7 +224,7 @@ export const MockApi = {
 
     sendOtp: async (accountNumber: string, token: string = ''): Promise<any> => {
         try {
-            const response = await fetch(`${API_URL}/user/send-otp`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accountNumber })
@@ -214,7 +241,7 @@ export const MockApi = {
 
     verifyOtp: async (accountNumber: string, otp: string): Promise<boolean> => {
         try {
-            const response = await fetch(`${API_URL}/user/verify-otp`, {
+            const response = await fetchWithTimeout(`${API_URL}/user/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accountNumber, otp })
