@@ -4,6 +4,7 @@ import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper } from '../components/ui';
 import { User, Settings, Bell, Shield, CircleHelp, LogOut, ChevronRight, Edit3, X, Save, Mail, Phone as PhoneIcon, Globe } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../services/ThemeContext';
 import { useLanguage } from '../services/LanguageContext';
 
@@ -36,6 +37,7 @@ export const Profile = () => {
     const [notifications, setNotifications] = useState(true);
     const { theme, setTheme } = useTheme();
     const { language, setLanguage, t } = useLanguage();
+    const navigation = useNavigation<any>();
 
     // Edit profile state
     const [showEditModal, setShowEditModal] = useState(false);
@@ -71,36 +73,52 @@ export const Profile = () => {
     return (
         <ScreenWrapper>
             <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-                <View className="bg-white dark:bg-neutral-800 p-6 mb-4 items-center border-b border-neutral-border dark:border-neutral-700 shadow-sm">
-                    <View className="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full items-center justify-center mb-4 border border-primary/20">
-                        <Text className="text-4xl font-bold text-primary dark:text-blue-400">{user?.name ? user.name[0] : 'U'}</Text>
-                    </View>
-                    <Text className="text-xl font-bold text-neutral-text dark:text-white">{user?.name}</Text>
-                    {user?.email && (
-                        <View className="flex-row items-center mt-1">
-                            <Mail size={14} color="#94A3B8" />
-                            <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1">{user.email}</Text>
+                {user ? (
+                    <View className="bg-white dark:bg-neutral-800 p-6 mb-4 items-center border-b border-neutral-border dark:border-neutral-700 shadow-sm">
+                        <View className="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full items-center justify-center mb-4 border border-primary/20">
+                            <Text className="text-4xl font-bold text-primary dark:text-blue-400">{user.name ? user.name[0] : 'U'}</Text>
                         </View>
-                    )}
-                    {user?.phone && (
-                        <View className="mt-2 bg-gray-100 dark:bg-neutral-700 px-3 py-1 rounded-full">
-                            <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">+91 {user.phone}</Text>
-                        </View>
-                    )}
-                    {user?.accountNumber && (
-                        <View className="mt-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full">
-                            <Text className="text-primary dark:text-blue-400 text-xs font-medium">A/C: {user.accountNumber}</Text>
-                        </View>
-                    )}
+                        <Text className="text-xl font-bold text-neutral-text dark:text-white">{user.name}</Text>
+                        {user.email && (
+                            <View className="flex-row items-center mt-1">
+                                <Mail size={14} color="#94A3B8" />
+                                <Text className="text-neutral-text-secondary dark:text-neutral-400 ml-1">{user.email}</Text>
+                            </View>
+                        )}
+                        {user.phone && (
+                            <View className="mt-2 bg-gray-100 dark:bg-neutral-700 px-3 py-1 rounded-full">
+                                <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">+91 {user.phone}</Text>
+                            </View>
+                        )}
+                        {user.accountNumber && (
+                            <View className="mt-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full">
+                                <Text className="text-primary dark:text-blue-400 text-xs font-medium">A/C: {user.accountNumber}</Text>
+                            </View>
+                        )}
 
-                    <TouchableOpacity
-                        onPress={handleEditProfile}
-                        className="mt-3 flex-row items-center bg-primary/10 dark:bg-primary/20 px-4 py-2 rounded-full"
-                    >
-                        <Edit3 size={14} color="#2563EB" />
-                        <Text className="text-primary dark:text-blue-400 font-semibold text-sm ml-1">Edit Profile</Text>
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity
+                            onPress={handleEditProfile}
+                            className="mt-3 flex-row items-center bg-primary/10 dark:bg-primary/20 px-4 py-2 rounded-full"
+                        >
+                            <Edit3 size={14} color="#2563EB" />
+                            <Text className="text-primary dark:text-blue-400 font-semibold text-sm ml-1">Edit Profile</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View className="bg-white dark:bg-neutral-800 p-6 mb-4 items-center border-b border-neutral-border dark:border-neutral-700 shadow-sm">
+                        <View className="w-24 h-24 bg-gray-100 dark:bg-neutral-700 rounded-full items-center justify-center mb-4">
+                            <User size={40} color="#94A3B8" />
+                        </View>
+                        <Text className="text-xl font-bold text-neutral-text dark:text-white mb-2">Not Logged In</Text>
+                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-center mb-4">Login to access your full profile and settings.</Text>
+                        <Button
+                            title="Login / Sign Up"
+                            onPress={() => navigation.navigate('Login')}
+                            variant="primary"
+                            className="w-full shadow-lg shadow-primary/30"
+                        />
+                    </View>
+                )}
 
                 <View className="px-4">
                     <Text className="px-1 py-3 text-secondary font-bold text-xs uppercase tracking-wider">Security</Text>
@@ -159,14 +177,16 @@ export const Profile = () => {
                         />
                     </View>
 
-                    <Button
-                        title={t('logout')}
-                        variant="ghost"
-                        icon={<LogOut size={18} color="#ef4444" />}
-                        className="border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 mb-4"
-                        textClassName="text-red-600 dark:text-red-400"
-                        onPress={handleLogout}
-                    />
+                    {user && (
+                        <Button
+                            title={t('logout')}
+                            variant="ghost"
+                            icon={<LogOut size={18} color="#ef4444" />}
+                            className="border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 mb-4"
+                            textClassName="text-red-600 dark:text-red-400"
+                            onPress={handleLogout}
+                        />
+                    )}
                     <Text className="text-center text-xs text-neutral-text-secondary dark:text-neutral-500 mt-2">Version 1.0.0 (Hackathon Build)</Text>
                 </View>
             </ScrollView>

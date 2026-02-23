@@ -3,9 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView } from 'reac
 import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
 import { InputField as Input } from '../components/ui/InputField';
-import { Card, ScreenWrapper } from '../components/ui';
+import { Card, ScreenWrapper, LoginPrompt } from '../components/ui';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Search, User as UserIcon, CheckCircle, XCircle } from 'lucide-react-native';
+import { Search, User as UserIcon, CheckCircle, XCircle, Bluetooth } from 'lucide-react-native';
+import { bluetoothService } from '../services/BluetoothService';
 
 type Step = 'scan' | 'amount' | 'confirm' | 'result';
 
@@ -18,6 +19,7 @@ export const Pay = () => {
     const [amount, setAmount] = useState('');
     const [note, setNote] = useState('');
     const [txnResult, setTxnResult] = useState<'success' | 'failure' | null>(null);
+    const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
 
     const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
         setScanned(true);
@@ -50,9 +52,30 @@ export const Pay = () => {
             return;
         }
 
-        const success = await sendMoney(amt, payee, note);
-        setTxnResult(success ? 'success' : 'failure');
-        setStep('result');
+        if (isOfflineMode) {
+            setIsConnectingBluetooth(true);
+            const hasPerms = await bluetoothService.requestPermissions();
+            if (hasPerms) {
+                await bluetoothService.enableBluetooth();
+            } else {
+                Alert.alert('Permission Denied', 'Bluetooth permissions are required for offline payments.');
+                setIsConnectingBluetooth(false);
+                return;
+            }
+
+            // Simulate searching and connecting to the payee's device
+            setTimeout(async () => {
+                const success = await sendMoney(amt, payee, note);
+                setTxnResult(success ? 'success' : 'failure');
+                setIsConnectingBluetooth(false);
+                setStep('result');
+            }, 2500); // 2.5 second delay simulating Bluetooth handshake & transfer
+        } else {
+            // Online flow -> instant transfer or network simulation
+            const success = await sendMoney(amt, payee, note);
+            setTxnResult(success ? 'success' : 'failure');
+            setStep('result');
+        }
     };
 
     const reset = () => {
@@ -62,6 +85,7 @@ export const Pay = () => {
         setNote('');
         setTxnResult(null);
         setScanned(false);
+        setIsConnectingBluetooth(false);
     };
 
     const renderScanStep = () => {
@@ -198,13 +222,20 @@ export const Pay = () => {
                 <Text className="text-status-error text-center mb-4 font-medium">Insufficient Offline Balance</Text>
             )}
 
+            {isConnectingBluetooth ? (
+                <View className="mb-4 items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-primary/20">
+                    <Bluetooth size={24} color="#2563EB" className="mb-2" />
+                    <Text className="text-primary dark:text-blue-400 font-semibold text-center">Connecting & Sending via Bluetooth...</Text>
+                </View>
+            ) : null}
+
             <Button
                 title="Pay Now"
                 onPress={handleConfirm}
-                disabled={isOfflineMode && (offlineWallet?.balance || 0) < parseFloat(amount)}
+                disabled={isConnectingBluetooth || (isOfflineMode && (offlineWallet?.balance || 0) < parseFloat(amount))}
                 className={isOfflineMode && (offlineWallet?.balance || 0) < parseFloat(amount) ? 'opacity-50' : 'shadow-lg shadow-primary/30'}
             />
-            <Button title="Back" variant="ghost" onPress={() => setStep('amount')} className="mt-2" />
+            <Button title="Back" variant="ghost" onPress={() => setStep('amount')} disabled={isConnectingBluetooth} className="mt-2" />
         </View>
     );
 
@@ -229,9 +260,18 @@ export const Pay = () => {
             </Text>
 
             {isOfflineMode && txnResult === 'success' && (
-                <View className="bg-orange-50 dark:bg-orange-900/20 px-4 py-2 rounded-full border border-orange-100 dark:border-orange-900/50 mb-8">
+                <View className="bg-orange-50 dark:bg-orange-900/20 px-4 py-2 rounded-full border border-orange-100 dark:border-orange-900/50 mb-4">
                     <Text className="text-orange-700 dark:text-orange-400 text-xs font-medium">
                         Offline Transaction - Will sync when online
+                    </Text>
+                </View>
+            )}
+
+            {isOfflineMode && txnResult === 'success' && (
+                <View className="flex-row items-center justify-center bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-full border border-blue-100 dark:border-blue-900/50 mb-8">
+                    <Bluetooth size={14} color="#2563EB" className="mr-2" />
+                    <Text className="text-blue-700 dark:text-blue-400 text-xs font-medium">
+                        Transferred securely via Bluetooth
                     </Text>
                 </View>
             )}
@@ -239,6 +279,10 @@ export const Pay = () => {
             <Button title="Done" onPress={reset} className="w-full" />
         </View>
     );
+
+    if (!user) {
+        return <LoginPrompt title="Scan & Pay" description="Please login to make payments." />;
+    }
 
     return (
         <ScreenWrapper>

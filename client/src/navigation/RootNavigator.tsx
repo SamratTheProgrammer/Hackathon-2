@@ -111,18 +111,11 @@ export const RootNavigator = () => {
         <View className="flex-1 bg-neutral-bg dark:bg-neutral-900" onLayout={() => { }}>
             <StatusBar style={activeTheme === 'dark' ? 'light' : 'dark'} backgroundColor={activeTheme === 'dark' ? '#0F172A' : '#F8FAFC'} />
             <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: activeTheme === 'dark' ? '#0F172A' : '#F8FAFC' } }}>
-                {user ? (
-                    <>
-                        <Stack.Screen name="Main" component={TabNavigator} />
-                        <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
-                    </>
-                ) : (
-                    <>
-                        <Stack.Screen name="Login" component={LoginScreen} />
-                        <Stack.Screen name="Signup" component={SignupScreen} />
-                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-                    </>
-                )}
+                <Stack.Screen name="Main" component={TabNavigator} />
+                <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Signup" component={SignupScreen} />
+                <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             </Stack.Navigator>
         </View>
     );

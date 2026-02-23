@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView } from 'react-native';
 import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
-import { Card, ScreenWrapper } from '../components/ui';
+import { Card, ScreenWrapper, LoginPrompt } from '../components/ui';
 import { Wallet as WalletIcon, RefreshCw, ArrowRight, ShieldCheck } from 'lucide-react-native';
 
 export const Wallet = () => {
-    const { offlineWallet, bankBalance, loadOfflineCash, syncTransactions, transactions, isOfflineMode } = useOffline();
+    const { user, offlineWallet, bankBalance, loadOfflineCash, syncTransactions, transactions, isOfflineMode } = useOffline();
     const [loadAmount, setLoadAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -46,6 +46,10 @@ export const Wallet = () => {
     };
 
     const pendingCount = transactions.filter(t => t.status === 'pending').length;
+
+    if (!user) {
+        return <LoginPrompt title="Offline Wallet" description="Please login to manage your offline wallet and check balances." />;
+    }
 
     return (
         <ScreenWrapper>

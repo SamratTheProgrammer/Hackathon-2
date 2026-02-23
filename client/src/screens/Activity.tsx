@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput } from 'react-native';
 import { useOffline } from '../services/OfflineContext';
 import { InputField as Input } from '../components/ui/InputField';
-import { Card, ScreenWrapper } from '../components/ui';
+import { Card, ScreenWrapper, LoginPrompt } from '../components/ui';
 import { Transaction } from '../types';
 import { ArrowUpRight, ArrowDownLeft, RefreshCw, Search, Filter } from 'lucide-react-native';
 
@@ -16,7 +16,7 @@ const FilterChip = ({ label, active, onPress }: { label: string, active: boolean
 );
 
 export const Activity = () => {
-    const { transactions } = useOffline();
+    const { user, transactions } = useOffline();
     const [filter, setFilter] = useState<'All' | 'Pending' | 'Settled' | 'Failed'>('All');
     const [search, setSearch] = useState('');
 
@@ -65,6 +65,10 @@ export const Activity = () => {
             </View>
         </Card>
     );
+
+    if (!user) {
+        return <LoginPrompt title="Activity Log" description="Please login to view your transaction history." />;
+    }
 
     return (
         <ScreenWrapper>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useOffline } from '../services/OfflineContext';
 import { UiButton as Button } from '../components/ui/UiButton';
-import { Card, ScreenWrapper } from '../components/ui';
+import { Card, ScreenWrapper, LoginPrompt } from '../components/ui';
 import QRCode from 'react-native-qrcode-svg';
 import { Bluetooth, Share2, Copy } from 'lucide-react-native';
 import { bluetoothService } from '../services/BluetoothService';
@@ -12,9 +13,31 @@ export const Receive = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [incomingTxn, setIncomingTxn] = useState<any>(null);
+    const [isCopied, setIsCopied] = useState(false);
 
     // Generate UPI URI
     const upiUri = `upi://pay?pa=${user?.upiId}&pn=${user?.name}&am=0`;
+
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `Pay me securely using DigiDhan.\nMy UPI ID: ${user?.upiId}\nPayment Link: ${upiUri}`,
+                title: 'My Payment Details'
+            });
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
+    const handleCopy = async () => {
+        if (user?.upiId) {
+            await Clipboard.setStringAsync(user.upiId);
+            setIsCopied(true);
+            setTimeout(() => {
+                setIsCopied(false);
+            }, 2000);
+        }
+    };
 
     // Bluetooth Scanning
     const findPayer = async () => {
@@ -88,6 +111,10 @@ export const Receive = () => {
         );
     }
 
+    if (!user) {
+        return <LoginPrompt title="Receive Money" description="Please login to receive money via QR or Bluetooth." />;
+    }
+
     return (
         <ScreenWrapper className="p-4 bg-neutral-bg dark:bg-neutral-900">
             <View className="items-center mt-6 mb-8">
@@ -114,16 +141,16 @@ export const Receive = () => {
                 <Button
                     title="Share QR"
                     variant="secondary"
-                    onPress={() => Alert.alert('Share', 'Sharing not implemented yet')}
+                    onPress={handleShare}
                     icon={<Share2 size={18} color="#2563EB" />}
                     className="flex-1 bg-white dark:bg-neutral-800 border-neutral-border dark:border-neutral-700"
                 />
                 <Button
-                    title="Copy ID"
-                    variant="secondary"
-                    onPress={() => Alert.alert('Copied', 'UPI ID copied to clipboard')}
-                    icon={<Copy size={18} color="#2563EB" />}
-                    className="flex-1 bg-white dark:bg-neutral-800 border-neutral-border dark:border-neutral-700"
+                    title={isCopied ? "Copied!" : "Copy ID"}
+                    variant={isCopied ? "primary" : "secondary"}
+                    onPress={handleCopy}
+                    icon={<Copy size={18} color={isCopied ? "#FFFFFF" : "#2563EB"} />}
+                    className={`flex-1 ${isCopied ? 'bg-green-500 border-green-500 shadow-lg shadow-green-500/30' : 'bg-white dark:bg-neutral-800 border-neutral-border dark:border-neutral-700'}`}
                 />
             </View>
 
