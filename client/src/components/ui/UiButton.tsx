@@ -46,18 +46,18 @@ export function UiButton({
             ) : icon ? (
                 <View className="mr-2">{icon}</View>
             ) : null}
-            <Text className={twMerge(textStyles[variant], disabled && 'text-gray-400', textClassName)}>{title}</Text>
+            <Text className={twMerge(textStyles[variant], disabled && variant !== 'primary' && 'text-gray-400', textClassName)}>{title}</Text>
         </>
     );
 
-    if (variant === 'primary' && !disabled) {
+    if (variant === 'primary') {
         return (
-            <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={loading}>
+            <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={disabled || loading}>
                 <LinearGradient
                     colors={['#2563EB', '#10B981']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    className={twMerge(baseStyles, 'shadow-sm shadow-primary/20', className)}
+                    className={twMerge(baseStyles, 'shadow-sm shadow-primary/20', disabled && 'opacity-60', className)}
                 >
                     {buttonContent}
                 </LinearGradient>

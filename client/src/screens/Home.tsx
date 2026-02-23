@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOffline } from '../services/OfflineContext';
 import { OfflineBanner } from '../components/OfflineBanner';
@@ -8,38 +8,57 @@ import { UiButton as Button } from '../components/ui/UiButton';
 import { Card, ScreenWrapper } from '../components/ui';
 import {
     ArrowUpRight, ArrowDownLeft, Wallet, RefreshCw, Smartphone,
-    Landmark, Eye, ArrowLeftRight, Zap, Tv, Car
+    Landmark, Eye, EyeOff, ArrowLeftRight, Zap, Tv, Car
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../services/LanguageContext';
 
 export const Home = () => {
     const { user, bankBalance, offlineWallet, isOfflineMode, setOfflineMode, transactions, syncTransactions, bankAccountNo, bankAccounts } = useOffline();
+    const { t } = useLanguage();
     const navigation = useNavigation<any>();
     const [refreshing, setRefreshing] = React.useState(false);
+    const [balanceVisible, setBalanceVisible] = React.useState(false);
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     const onRefresh = async () => {
         setRefreshing(true);
-        // Simulate refresh
         setTimeout(() => setRefreshing(false), 1000);
+    };
+
+    const toggleBalance = () => {
+        if (!bankAccountNo) {
+            Alert.alert('No Bank Linked', 'Please link your DigiDhan bank account first.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Link Now', onPress: () => navigation.navigate('AddBank') }
+            ]);
+            return;
+        }
+        if (balanceVisible) {
+            Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setBalanceVisible(false));
+        } else {
+            setBalanceVisible(true);
+            Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+        }
     };
 
     const recentTxns = transactions.slice(0, 3);
 
     const quickActions = [
-        { icon: <ArrowUpRight color="white" size={24} />, label: 'Pay / Scan', isActive: true, onPress: () => navigation.navigate('Pay') },
-        { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: 'Receive', onPress: () => navigation.navigate('Receive') },
-        { icon: <Wallet color="#2563EB" size={24} />, label: 'Load Cash', onPress: () => navigation.navigate('Wallet') },
-        { icon: <RefreshCw color="#2563EB" size={24} />, label: 'Sync Txns', onPress: syncTransactions },
-        { icon: <Landmark color="#2563EB" size={24} />, label: 'Add Bank', onPress: () => navigation.navigate('AddBank') },
-        { icon: <Eye color="#2563EB" size={24} />, label: 'Check Balance', onPress: () => Alert.alert('Bank Balance', `₹${bankBalance.toFixed(2)}\n\nAccount: SBI •• ${bankAccountNo?.slice(-4) || 'XXXX'}`, [{ text: 'OK' }]) },
+        { icon: <ArrowUpRight color="white" size={24} />, label: t('scan_pay'), isActive: true, onPress: () => navigation.navigate('Pay') },
+        { icon: <ArrowDownLeft color="#2563EB" size={24} />, label: t('nav_receive'), onPress: () => navigation.navigate('Receive') },
+        { icon: <Wallet color="#2563EB" size={24} />, label: t('load_cash'), onPress: () => navigation.navigate('Wallet') },
+        { icon: <RefreshCw color="#2563EB" size={24} />, label: t('sync_now'), onPress: syncTransactions },
+        { icon: <Landmark color="#2563EB" size={24} />, label: bankAccountNo ? 'Bank Linked' : t('add_bank'), onPress: () => navigation.navigate('AddBank') },
+        { icon: <Eye color="#2563EB" size={24} />, label: t('check_balance'), onPress: toggleBalance },
         { icon: <ArrowLeftRight color="#2563EB" size={24} />, label: 'Self Transfer', onPress: () => navigation.navigate('Wallet') },
     ];
 
     const billActions = [
-        { icon: <Smartphone color="#2563EB" size={22} />, label: 'Mobile\nRecharge', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-        { icon: <Zap color="#F59E0B" size={22} />, label: 'Electricity', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-        { icon: <Tv color="#8B5CF6" size={22} />, label: 'DTH', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+        { icon: <Smartphone color="#2563EB" size={22} />, label: t('mobile_recharge'), bg: 'bg-blue-50 dark:bg-blue-900/20' },
+        { icon: <Zap color="#F59E0B" size={22} />, label: t('electricity'), bg: 'bg-amber-50 dark:bg-amber-900/20' },
+        { icon: <Tv color="#8B5CF6" size={22} />, label: t('dth'), bg: 'bg-violet-50 dark:bg-violet-900/20' },
         { icon: <Car color="#10B981" size={22} />, label: 'FastTag', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
     ];
 
@@ -52,7 +71,7 @@ export const Home = () => {
                 {/* Header */}
                 <View className="flex-row justify-between items-center mb-6">
                     <View>
-                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">Welcome back,</Text>
+                        <Text className="text-neutral-text-secondary dark:text-neutral-400 text-sm font-medium">{t('welcome_back')},</Text>
                         <Text className="text-2xl font-bold text-neutral-text dark:text-white">{user?.name}</Text>
                     </View>
                     <TouchableOpacity
@@ -74,7 +93,7 @@ export const Home = () => {
                 >
                     <View className="flex-row justify-between items-start mb-6">
                         <View>
-                            <Text className="text-white/80 font-medium mb-1">Offline Balance</Text>
+                            <Text className="text-white/80 font-medium mb-1">{t('offline_wallet')}</Text>
                             <Text className="text-4xl font-bold text-white">₹{offlineWallet?.balance.toFixed(2)}</Text>
                         </View>
                         <View className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
@@ -95,19 +114,32 @@ export const Home = () => {
                         {bankAccounts.length > 0 ? (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
                                 {bankAccounts.map((account: any, index: number) => (
-                                    <Card key={index} className="px-5 py-4 min-w-[220px] rounded-2xl border border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
-                                        <View className="flex-row items-center mb-3">
-                                            <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
-                                                <Landmark size={20} color="#2563EB" />
+                                    <TouchableOpacity
+                                        key={index}
+                                        activeOpacity={0.7}
+                                        onPress={() => (navigation as any).navigate('BankDetails', { account })}
+                                    >
+                                        <Card className="px-5 py-4 min-w-[220px] rounded-2xl border border-neutral-border dark:border-neutral-700 bg-white dark:bg-neutral-800">
+                                            <View className="flex-row items-center mb-2">
+                                                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                                                    <Landmark size={20} color="#2563EB" />
+                                                </View>
+                                                <View>
+                                                    <Text className="text-neutral-text dark:text-white font-bold">{account.bankName || 'DigitalDhan Bank'}</Text>
+                                                    <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">•••• {account.accountNumber?.slice(-4)}</Text>
+                                                </View>
                                             </View>
-                                            <View>
-                                                <Text className="text-neutral-text dark:text-white font-bold">{account.bankName || 'DigitalDhan Bank'}</Text>
-                                                <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">•••• {account.accountNumber?.slice(-4)}</Text>
-                                            </View>
-                                        </View>
-                                        <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-xs mb-1">Available Balance</Text>
-                                        <Text className="text-xl font-bold text-neutral-text dark:text-white">₹{(account.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</Text>
-                                    </Card>
+                                            <Text className="text-xs text-neutral-text dark:text-neutral-300 font-medium uppercase tracking-widest mb-3 mt-1">
+                                                {account.ownerName || user?.name || 'Account Holder'}
+                                            </Text>
+                                            <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-xs mb-1">Available Balance</Text>
+                                            <Text className="text-xl font-bold text-neutral-text dark:text-white">
+                                                {balanceVisible
+                                                    ? `₹${(account.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+                                                    : "••••••"}
+                                            </Text>
+                                        </Card>
+                                    </TouchableOpacity>
                                 ))}
                             </ScrollView>
                         ) : (
@@ -122,7 +154,7 @@ export const Home = () => {
                 )}
 
                 {/* Quick Actions */}
-                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">Quick Actions</Text>
+                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">{t('quick_actions')}</Text>
                 <View className="flex-row flex-wrap mb-6" style={{ gap: 0 }}>
                     {quickActions.map((action, index) => (
                         <ActionButton
@@ -136,7 +168,7 @@ export const Home = () => {
                 </View>
 
                 {/* Bills & Recharges */}
-                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">Bills & Recharges</Text>
+                <Text className="text-lg font-bold text-neutral-text dark:text-white mb-4">{t('bills_recharges')}</Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -162,9 +194,9 @@ export const Home = () => {
 
                 {/* Recent Activity */}
                 <View className="flex-row justify-between items-center mb-4">
-                    <Text className="text-lg font-bold text-neutral-text dark:text-white">Recent Activity</Text>
+                    <Text className="text-lg font-bold text-neutral-text dark:text-white">{t('recent_transactions')}</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
-                        <Text className="text-primary dark:text-blue-400 font-semibold">View All</Text>
+                        <Text className="text-primary dark:text-blue-400 font-semibold">{t('view_all')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -184,7 +216,7 @@ export const Home = () => {
                                             <RefreshCw size={20} color="#3b82f6" />}
                                 </View>
                                 <View>
-                                    <Text className="font-semibold text-neutral-text dark:text-white capitalize text-base">{txn.type}</Text>
+                                    <Text className="font-semibold text-neutral-text dark:text-white capitalize text-base">{t(txn.type)}</Text>
                                     <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">{new Date(txn.createdAt).toLocaleDateString()}</Text>
                                 </View>
                             </View>
@@ -195,7 +227,7 @@ export const Home = () => {
                                 <Text className={`text-xs capitalize font-medium ${txn.status === 'pending' ? 'text-status-warning' :
                                     txn.status === 'failed' ? 'text-status-error' : 'text-neutral-text-secondary dark:text-neutral-400'
                                     } `}>
-                                    {txn.status}
+                                    {t(txn.status)}
                                 </Text>
                             </View>
                         </Card>

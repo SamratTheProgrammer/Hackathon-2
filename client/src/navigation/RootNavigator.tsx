@@ -7,8 +7,12 @@ import { Receive } from '../screens/Receive';
 import { Activity } from '../screens/Activity';
 import { Wallet } from '../screens/Wallet';
 import { Profile } from '../screens/Profile';
-import { Onboarding } from '../screens/Onboarding';
+import { LoginScreen } from '../screens/LoginScreen';
+import { SignupScreen } from '../screens/SignupScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { AddBank } from '../screens/AddBank';
+import { BankDetails } from '../screens/BankDetails';
+import { SetUpiPin } from '../screens/SetUpiPin';
 import { useOffline } from '../services/OfflineContext';
 import { useTheme } from '../services/ThemeContext';
 import { View, ActivityIndicator, Platform } from 'react-native';
@@ -113,9 +117,15 @@ export const RootNavigator = () => {
                     <>
                         <Stack.Screen name="Main" component={TabNavigator} />
                         <Stack.Screen name="AddBank" component={AddBank} options={{ headerShown: false }} />
+                        <Stack.Screen name="BankDetails" component={BankDetails} options={{ headerShown: false }} />
+                        <Stack.Screen name="SetUpiPin" component={SetUpiPin} options={{ headerShown: false }} />
                     </>
                 ) : (
-                    <Stack.Screen name="Onboarding" component={Onboarding} />
+                    <>
+                        <Stack.Screen name="Login" component={LoginScreen} />
+                        <Stack.Screen name="Signup" component={SignupScreen} />
+                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                    </>
                 )}
             </Stack.Navigator>
         </View>

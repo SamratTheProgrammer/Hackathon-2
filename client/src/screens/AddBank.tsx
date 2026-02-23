@@ -8,10 +8,12 @@ import { ScreenWrapper } from '../components/ui';
 import { ArrowLeft, Landmark, Key, Mail, CreditCard, User, Smartphone } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MockApi } from '../services/api';
+import { useToast } from '../components/ui/Toast';
 
 export const AddBank = () => {
     const navigation = useNavigation();
-    const { linkBankAccount } = useOffline();
+    const { linkBankAccount, bankAccounts } = useOffline();
+    const { showToast } = useToast();
 
     // Steps: 0 = Input Account, 1 = Confirm Email, 2 = Input OTP
     const [step, setStep] = useState(0);
@@ -27,6 +29,14 @@ export const AddBank = () => {
             Alert.alert('Error', 'Please enter a valid Account Number');
             return;
         }
+
+        const isAlreadyLinked = bankAccounts.some(account => account.accountNumber === accountNumber);
+        if (isAlreadyLinked) {
+            showToast('This bank account is already linked to your profile.', 'info');
+            Alert.alert('Already Connected', 'This bank account is already linked to your profile.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             const result = await MockApi.lookupAccount(accountNumber, '');
@@ -93,7 +103,14 @@ export const AddBank = () => {
     };
 
     const handleVerifyOtp = async () => {
-        if (!otp || otp.length !== 6) {
+        // Aggressively strip any non-digit characters (including zero-width spaces from Gmail)
+        const cleanOtp = otp ? otp.replace(/[^0-9]/g, '') : '';
+        const cleanGeneratedOtp = generatedOtp ? generatedOtp.replace(/[^0-9]/g, '') : '';
+
+        console.log(`[handleVerifyOtp] User entered raw: '${otp}', cleaned: '${cleanOtp}'`);
+        console.log(`[handleVerifyOtp] Generated OTP is: '${cleanGeneratedOtp}'`);
+
+        if (!cleanOtp || cleanOtp.length !== 6) {
             Alert.alert('Error', 'Please enter a valid 6-digit OTP');
             return;
         }
@@ -101,20 +118,24 @@ export const AddBank = () => {
 
         // Local OTP Verification
         setTimeout(async () => {
-            if (otp === generatedOtp) {
+            if (cleanOtp === cleanGeneratedOtp) {
+                console.log(`[handleVerifyOtp] Match successful. Initiating linkBankAccount...`);
                 try {
                     const success = await linkBankAccount(accountNumber, email);
                     if (success) {
-                        Alert.alert('Success', 'Bank Account Linked Successfully!', [
-                            { text: 'OK', onPress: () => navigation.goBack() }
-                        ]);
+                        console.log(`[handleVerifyOtp] linkBankAccount returned SUCCESS.`);
+                        showToast('Successfully connected your bank account!', 'success');
+                        (navigation as any).navigate('Main', { screen: 'Home' });
                     } else {
-                        Alert.alert('Failed', 'OTP Verified but backend link failed. Please check backend logs.');
+                        console.log(`[handleVerifyOtp] linkBankAccount returned FALSE.`);
+                        showToast('Could not link your bank account. Please check backend logs.', 'error');
                     }
                 } catch (error: any) {
-                    Alert.alert('Crash', error.message || 'An unknown error occurred during linking.');
+                    console.error(`[handleVerifyOtp] Crash during linking:`, error);
+                    showToast(error.message || 'An unknown error occurred during linking.', 'error');
                 }
             } else {
+                console.log(`[handleVerifyOtp] Match FAILED. '${cleanOtp}' !== '${cleanGeneratedOtp}'`);
                 Alert.alert('Error', 'Invalid OTP');
             }
             setIsLoading(false);
