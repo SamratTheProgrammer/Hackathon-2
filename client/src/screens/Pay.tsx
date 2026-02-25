@@ -24,24 +24,30 @@ export const Pay = () => {
     const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
         setScanned(true);
         try {
+            // New format: upi://pay?pa=...&pn=...&deviceId=...
             if (data.startsWith('upi://')) {
                 const params = new URLSearchParams(data.split('?')[1]);
                 const pa = params.get('pa');
                 const pn = params.get('pn');
+                const pDeviceId = params.get('deviceId'); // Custom param for offline BLE
                 if (pa) {
-                    handlePayeeSelect(pn || 'Merchant', pa);
+                    handlePayeeSelect(pn || 'Merchant', pa, pDeviceId);
                     return;
                 }
             }
-            handlePayeeSelect('Unknown', data);
+            handlePayeeSelect('Unknown', data, null);
         } catch (e) {
             Alert.alert('Invalid QR', 'Could not parse UPI QR code.');
             setScanned(false);
         }
     };
 
-    const handlePayeeSelect = (name: string, upiId: string) => {
+    const handlePayeeSelect = (name: string, upiId: string, deviceId: string | null = null) => {
         setPayee({ name, upiId });
+        // Store device ID temporarily for offline use
+        if (deviceId) {
+            (payee as any).deviceId = deviceId;
+        }
         setStep('amount');
     };
 
@@ -63,13 +69,39 @@ export const Pay = () => {
                 return;
             }
 
-            // Simulate searching and connecting to the payee's device
-            setTimeout(async () => {
-                const success = await sendMoney(amt, payee, note);
-                setTxnResult(success ? 'success' : 'failure');
+            const deviceId = (payee as any).deviceId;
+
+            if (deviceId) {
+                // Real attempt to connect and write over BLE
+                const payload = JSON.stringify({
+                    amount: amt,
+                    payerName: user?.name,
+                    payerUpiId: user?.upiId,
+                    note: note,
+                    timestamp: new Date().toISOString()
+                });
+
+                const connected = await bluetoothService.connectAndWrite(deviceId, payload);
+                if (connected) {
+                    const success = await sendMoney(amt, payee, note);
+                    setTxnResult(success ? 'success' : 'failure');
+                } else {
+                    Alert.alert('Connection Failed', 'Could not transfer data to payee device.');
+                    setTxnResult('failure');
+                }
                 setIsConnectingBluetooth(false);
                 setStep('result');
-            }, 2500); // 2.5 second delay simulating Bluetooth handshake & transfer
+
+            } else {
+                // Fallback simulation if no device ID was in QR (e.g. testing)
+                setTimeout(async () => {
+                    const success = await sendMoney(amt, payee, note);
+                    setTxnResult(success ? 'success' : 'failure');
+                    setIsConnectingBluetooth(false);
+                    setStep('result');
+                }, 2500);
+            }
+
         } else {
             // Online flow -> instant transfer or network simulation
             const success = await sendMoney(amt, payee, note);

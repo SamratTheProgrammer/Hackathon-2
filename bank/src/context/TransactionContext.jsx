@@ -20,6 +20,13 @@ export const TransactionProvider = ({ children }) => {
         if (token) {
             fetchUserData();
             fetchTransactions();
+
+            const interval = setInterval(() => {
+                fetchUserData();
+                fetchTransactions();
+            }, 10000);
+
+            return () => clearInterval(interval);
         }
     }, [token]);
 
@@ -130,7 +137,8 @@ export const TransactionProvider = ({ children }) => {
                 to: transaction.to,
                 status: transaction.status || 'Success',
                 remarks: transaction.remarks,
-                receiverMobile: transaction.receiverMobile
+                receiverMobile: transaction.receiverMobile,
+                receiverAccount: transaction.receiverAccount
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });

@@ -10,7 +10,7 @@ const API_URL = 'http://localhost:5000/api';
 
 interface ContextType extends AppState {
     setOfflineMode: (isOffline: boolean) => void;
-    loadOfflineCash: (amount: number) => Promise<boolean>;
+    loadOfflineCash: (amount: number, fromAccountNo?: string) => Promise<boolean>;
     sendMoney: (amount: number, toUser: Partial<UserProfile>, note?: string) => Promise<boolean>;
     receiveMoney: (amount: number, fromUser: Partial<UserProfile>) => Promise<boolean>;
     syncTransactions: () => Promise<void>;
@@ -42,22 +42,23 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const loadInitialState = async () => {
         setIsLoading(true);
-        const [storedUser, storedBalance, storedWallet, storedTxns, storedAccountNo, storedToken] = await Promise.all([
+        const [storedUser, storedBalance, storedWallet, storedTxns, storedAccountNo, storedToken, storedAccounts] = await Promise.all([
             StorageService.getUserProfile(),
             StorageService.getBankBalance(),
             StorageService.getOfflineWallet(),
             StorageService.getTransactions(),
             StorageService.getBankAccountNo(),
             StorageService.getBankToken(),
+            StorageService.getLinkedBankAccounts(),
         ]);
 
         if (storedUser) setUser(storedUser);
         setBankBalance(storedBalance);
         setBankAccountNo(storedAccountNo);
 
-        // Load bank accounts if token exists
-        let accounts: any[] = [];
-        if (storedAccountNo) {
+        // Load bank accounts if they exist, or fallback to token 
+        let accounts: any[] = Array.isArray(storedAccounts) && storedAccounts.length > 0 ? storedAccounts : [];
+        if (accounts.length === 0 && storedAccountNo) {
             let ownerName = '';
             // Fetch the real account holder name from the bank DB
             if (storedToken) {
@@ -75,7 +76,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 accountNumber: storedAccountNo,
                 balance: storedBalance,
                 ownerName: ownerName,
+                token: storedToken,
             });
+            StorageService.saveLinkedBankAccounts(accounts);
         }
         setBankAccounts(accounts);
 
@@ -250,12 +253,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // WALLET / TRANSACTIONS
     // ============================================================
 
-    const loadOfflineCash = async (amount: number) => {
-        if (bankBalance < amount) return false;
+    const loadOfflineCash = async (amount: number, fromAccountNo?: string) => {
+        const targetAccountNo = fromAccountNo || bankAccountNo;
+        const targetAccount = bankAccounts.find(a => a.accountNumber === targetAccountNo);
+        if (!targetAccount) {
+            console.error('Account not found', targetAccountNo);
+            return false;
+        }
+
+        if (targetAccount.balance < amount) return false;
 
         try {
             // Deduct from real bank account via server
-            const token = await StorageService.getBankToken();
+            const token = targetAccount.token || await StorageService.getBankToken();
             if (token) {
                 const response = await fetch('http://localhost:5000/api/transactions', {
                     method: 'POST',
@@ -285,21 +295,31 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 StorageService.saveBankBalance(serverBalance);
 
                 // Update bankAccounts to reflect new balance
-                setBankAccounts(prev => prev.map(a =>
-                    a.accountNumber === bankAccountNo
+                const updatedAccounts = bankAccounts.map(a =>
+                    a.accountNumber === targetAccountNo
                         ? { ...a, balance: serverBalance }
                         : a
-                ));
+                );
+                setBankAccounts(updatedAccounts);
+                StorageService.saveLinkedBankAccounts(updatedAccounts);
+                if (targetAccountNo === bankAccountNo) {
+                    setBankBalance(serverBalance);
+                    StorageService.saveBankBalance(serverBalance);
+                }
             } else {
                 // Fallback: local-only deduction if no token
-                const newBankBalance = bankBalance - amount;
-                setBankBalance(newBankBalance);
-                StorageService.saveBankBalance(newBankBalance);
-                setBankAccounts(prev => prev.map(a =>
-                    a.accountNumber === bankAccountNo
+                const newBankBalance = targetAccount.balance - amount;
+                const updatedAccounts = bankAccounts.map(a =>
+                    a.accountNumber === targetAccountNo
                         ? { ...a, balance: newBankBalance }
                         : a
-                ));
+                );
+                setBankAccounts(updatedAccounts);
+                StorageService.saveLinkedBankAccounts(updatedAccounts);
+                if (targetAccountNo === bankAccountNo) {
+                    setBankBalance(newBankBalance);
+                    StorageService.saveBankBalance(newBankBalance);
+                }
             }
 
             const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance + amount };
@@ -324,6 +344,50 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const sendMoney = async (amount: number, toUser: Partial<UserProfile>, note?: string) => {
+        if (!isOfflineMode) {
+            // Online Bank Transfer
+            if (bankBalance < amount) {
+                Alert.alert('Insufficient Balance', 'Not enough funds in linked bank account.');
+                return false;
+            }
+
+            // Find the linked token
+            const token = bankAccounts.find(a => a.accountNumber === bankAccountNo)?.token || await StorageService.getBankToken();
+
+            if (!token) {
+                Alert.alert('Link Required', 'Please link your bank account for online transfers.');
+                return false;
+            }
+
+            try {
+                // Send real money using UPI ID directly
+                const res = await MockApi.sendP2PMoney(amount, { receiverUpiId: toUser.upiId || toUser.name }, note || 'Online Transfer', token);
+
+                // Update local balance
+                setBankBalance(res.newBalance);
+                StorageService.saveBankBalance(res.newBalance);
+
+                // Add to transactions
+                const txn: Transaction = {
+                    id: res.transaction.id || Date.now().toString(),
+                    type: 'sent',
+                    amount,
+                    toUser: toUser.name || toUser.upiId,
+                    status: 'settled',
+                    createdAt: res.transaction.date || new Date().toISOString(),
+                    isOffline: false,
+                    note
+                };
+                addTransaction(txn);
+                return true;
+            } catch (error: any) {
+                console.error('Online Transfer Error:', error);
+                Alert.alert('Transfer Failed', error.message || 'Could not complete online transfer');
+                return false;
+            }
+        }
+
+        // Offline Wallet Transfer
         if ((offlineWallet?.balance || 0) < amount) return false;
 
         const newWallet = { ...offlineWallet!, balance: offlineWallet!.balance - amount };
@@ -334,10 +398,10 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             id: Date.now().toString(),
             type: 'sent',
             amount,
-            toUser: toUser.name || toUser.upiId,
-            status: isOfflineMode ? 'pending' : 'settled',
+            toUser: toUser.upiId || toUser.name || 'Unknown',
+            status: 'pending',
             createdAt: new Date().toISOString(),
-            isOffline: isOfflineMode,
+            isOffline: true,
             note
         };
         addTransaction(txn);
@@ -434,13 +498,20 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             setBankAccounts(prev => {
                 // Avoid duplicates
-                if (prev.some(a => a.accountNumber === verificationResponse.account.accountNumber)) return prev;
-                return [...prev, {
-                    bankName: verificationResponse.account.bankName || 'DigitalDhan Bank',
-                    accountNumber: verificationResponse.account.accountNumber,
-                    balance: verificationResponse.account.balance,
-                    ownerName: verificationResponse.account.name || ''
-                }];
+                let newAccounts;
+                if (prev.some(a => a.accountNumber === verificationResponse.account.accountNumber)) {
+                    newAccounts = prev;
+                } else {
+                    newAccounts = [...prev, {
+                        bankName: verificationResponse.account.bankName || 'DigitalDhan Bank',
+                        accountNumber: verificationResponse.account.accountNumber,
+                        balance: verificationResponse.account.balance,
+                        ownerName: verificationResponse.account.name || '',
+                        token: token
+                    }];
+                }
+                StorageService.saveLinkedBankAccounts(newAccounts);
+                return newAccounts;
             });
 
             const updatedUser = {
@@ -449,6 +520,22 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             };
             setUser(updatedUser);
             await StorageService.saveUserProfile(updatedUser);
+
+            // Inform the backend to create the LinkedAccount record
+            try {
+                const appUserToken = user?.token || await StorageService.getAuthToken();
+                if (appUserToken) {
+                    console.log(`[linkBankAccount] 2.5. Calling linkAccountToServer API...`);
+                    await MockApi.linkAccountToServer(accountNumber, appUserToken);
+                    console.log(`[linkBankAccount] 2.5. Successfully linked account on server.`);
+                } else {
+                    console.warn(`[linkBankAccount] 2.5. No AppUser token found, skipping server link.`);
+                }
+            } catch (linkErr) {
+                console.error(`[linkBankAccount] API /app-auth/link-account Failed:`, linkErr);
+                // We don't throw here to avoid failing the entire local linking process,
+                // but in a real app you might want to handle this differently.
+            }
 
             console.log(`[linkBankAccount] 3. Fetching transactions...`);
             const bankTxns = await MockApi.fetchTransactions(token);
@@ -481,6 +568,70 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    // Auto-Sync Polling Interval
+    useEffect(() => {
+        if (isOfflineMode || bankAccounts.length === 0) return;
+
+        const interval = setInterval(async () => {
+            let updatedAccounts = [...bankAccounts];
+            let allTxns = [...transactions];
+            let stateChanged = false;
+
+            for (let i = 0; i < updatedAccounts.length; i++) {
+                const acc = updatedAccounts[i];
+                if (!acc.token) continue;
+
+                try {
+                    // Update Balance
+                    const verifyRes = await MockApi.verifyBankAccount(acc.accountNumber, acc.token);
+                    if (verifyRes?.account?.balance !== undefined && verifyRes.account.balance !== acc.balance) {
+                        updatedAccounts[i] = { ...acc, balance: verifyRes.account.balance };
+                        stateChanged = true;
+                        if (acc.accountNumber === bankAccountNo) {
+                            setBankBalance(verifyRes.account.balance);
+                            StorageService.saveBankBalance(verifyRes.account.balance);
+                        }
+                    }
+
+                    // Update Transactions
+                    const bankTxns = await MockApi.fetchTransactions(acc.token);
+                    const formattedBankTxns = bankTxns.map((t: any) => ({
+                        id: t.id,
+                        type: (t.type === 'credit' ? 'received' : 'sent') as TransactionType,
+                        amount: t.amount,
+                        status: t.status === 'Success' ? 'settled' : t.status.toLowerCase(),
+                        createdAt: t.date,
+                        isOffline: false,
+                        note: t.remarks || (t.type === 'credit' ? 'Credit' : 'Debit'),
+                        fromUser: t.type === 'credit' ? t.to : undefined,
+                        toUser: t.type === 'debit' ? t.to : undefined
+                    }));
+
+                    // Basic Merge algorithm: only append new ones
+                    const existingTxnIds = new Set(allTxns.map(t => t.id));
+                    const newTxns = formattedBankTxns.filter((t: any) => !existingTxnIds.has(t.id));
+
+                    if (newTxns.length > 0) {
+                        allTxns = [...newTxns, ...allTxns].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                        stateChanged = true;
+                    }
+                } catch (e) {
+                    // silently fail the poll
+                }
+            }
+
+            if (stateChanged) {
+                setBankAccounts(updatedAccounts);
+                StorageService.saveLinkedBankAccounts(updatedAccounts);
+                setTransactions(allTxns);
+                StorageService.saveTransactions(allTxns);
+            }
+
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [isOfflineMode, bankAccounts, transactions, bankAccountNo]);
+
     const handleSetOfflineMode = async (isOffline: boolean) => {
         setIsOfflineMode(isOffline);
         if (isOffline) {
@@ -492,7 +643,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const unlinkBankAccount = async (accountNumber: string): Promise<boolean> => {
         try {
-            setBankAccounts(prev => prev.filter(a => a.accountNumber !== accountNumber));
+            const newAccounts = bankAccounts.filter(a => a.accountNumber !== accountNumber);
+            setBankAccounts(newAccounts);
+            StorageService.saveLinkedBankAccounts(newAccounts);
             if (bankAccountNo === accountNumber) {
                 setBankAccountNo(null);
                 setBankBalance(0);

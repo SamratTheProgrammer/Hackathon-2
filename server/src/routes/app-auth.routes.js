@@ -203,5 +203,58 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
+// POST /api/app-auth/link-account — Link a bank account to the app user
+router.post('/link-account', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        if (decoded.type !== 'app') {
+            return res.status(401).json({ message: 'Invalid token type' });
+        }
+
+        const { accountNumber } = req.body;
+        if (!accountNumber) return res.status(400).json({ message: 'Account number is required' });
+
+        // Ensure app user exists
+        const user = await prisma.appUser.findUnique({ where: { id: decoded.id } });
+        if (!user) return res.status(404).json({ message: 'App user not found' });
+
+        // Ensure the bank account exists
+        const bankUser = await prisma.user.findUnique({ where: { accountNumber } });
+        if (!bankUser) return res.status(404).json({ message: 'Bank account not found' });
+
+        // Check if link already exists
+        const existingLink = await prisma.linkedAccount.findUnique({
+            where: {
+                appUserId_accountNumber: {
+                    appUserId: decoded.id,
+                    accountNumber: accountNumber
+                }
+            }
+        });
+
+        if (existingLink) {
+            return res.status(400).json({ message: 'Account is already linked' });
+        }
+
+        // Create the Link
+        const newLink = await prisma.linkedAccount.create({
+            data: {
+                appUserId: decoded.id,
+                accountNumber: accountNumber
+            }
+        });
+
+        res.json({ message: 'Account linked successfully', link: newLink });
+    } catch (error) {
+        console.error('App Link Account Error:', error);
+        res.status(500).json({ message: 'Failed to link account' });
+    }
+});
+
 module.exports = router;
 

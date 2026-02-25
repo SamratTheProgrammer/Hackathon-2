@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { ScreenWrapper } from '../components/ui';
 import { Card } from '../components/ui';
-import { ArrowLeft, ArrowDownUp, Landmark, Send } from 'lucide-react-native';
+import { ArrowLeft, ArrowDownUp, Landmark, Send, ChevronDown } from 'lucide-react-native';
 import { UiButton as Button } from '../components/ui/UiButton';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useOffline } from '../services/OfflineContext';
 import { useToast } from '../components/ui/Toast';
 import { StorageService } from '../storage';
@@ -12,8 +12,12 @@ import { MockApi } from '../services/api';
 
 export const SelfTransfer = () => {
     const navigation = useNavigation();
+    const route = useRoute();
     const { bankBalance, bankAccountNo, bankAccounts } = useOffline();
     const { showToast } = useToast();
+
+    const [fromAccount, setFromAccount] = useState(bankAccountNo);
+    const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
 
     const [recipientAc, setRecipientAc] = useState('');
     const [amount, setAmount] = useState('');
@@ -21,12 +25,44 @@ export const SelfTransfer = () => {
     const [recipientName, setRecipientName] = useState<string | null>(null);
     const [lookupDone, setLookupDone] = useState(false);
 
+    useEffect(() => {
+        const executeTransferAfterPin = async () => {
+            const params = route.params as any;
+            if (params?.pinVerifiedFromSelfTransfer && params?.transferData) {
+                // Clear params to avoid re-triggering
+                navigation.setParams({ pinVerifiedFromSelfTransfer: false, transferData: null } as any);
+
+                const { recipientAc, recipientName, amount: amt } = params.transferData;
+                setIsLoading(true);
+                try {
+                    const token = await StorageService.getBankToken();
+                    if (!token) throw new Error('Bank account not linked properly');
+
+                    await MockApi.sendP2PMoney(amt, { receiverAccount: recipientAc }, 'Self Transfer', token);
+                    showToast(`Successfully transferred ₹${amt} to ${recipientName}`, 'success');
+
+                    // Reset form
+                    setRecipientAc('');
+                    setAmount('');
+                    setRecipientName(null);
+                    setLookupDone(false);
+                } catch (e: any) {
+                    showToast(e.message || 'Transfer failed', 'error');
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        executeTransferAfterPin();
+    }, [route.params]);
+
     const handleLookup = async () => {
         if (!recipientAc || recipientAc.length < 5) {
             showToast('Please enter a valid account number', 'warning');
             return;
         }
-        if (recipientAc === bankAccountNo) {
+        if (recipientAc === fromAccount) {
             showToast('Cannot transfer to the same account', 'warning');
             return;
         }
@@ -62,7 +98,11 @@ export const SelfTransfer = () => {
             showToast('Please enter a valid amount', 'warning');
             return;
         }
-        if (amt > bankBalance) {
+        // Retrieve the specifically selected account
+        const account = bankAccounts.find((a: any) => a.accountNumber === fromAccount);
+        const sourceBalance = account ? account.balance : bankBalance;
+
+        if (amt > sourceBalance) {
             showToast('Insufficient bank balance', 'error');
             return;
         }
@@ -72,13 +112,12 @@ export const SelfTransfer = () => {
         }
 
         // Require UPI PIN
-        const pin = bankAccountNo ? await StorageService.getUpiPin(bankAccountNo) : null;
+        const pin = fromAccount ? await StorageService.getUpiPin(fromAccount) : null;
         if (!pin) {
-            showToast('Please set a UPI PIN first', 'warning');
+            showToast('Please set a UPI PIN for the selected account first', 'warning');
             return;
         }
 
-        const account = bankAccounts.find((a: any) => a.accountNumber === bankAccountNo);
         (navigation as any).navigate('SetUpiPin', {
             account: account || { accountNumber: bankAccountNo },
             mode: 'verify',
@@ -98,20 +137,73 @@ export const SelfTransfer = () => {
                 </View>
 
                 {/* From Account */}
-                <Card className="mb-6 p-5 bg-white dark:bg-neutral-800 border-neutral-border dark:border-neutral-700">
-                    <View className="flex-row items-center mb-3">
-                        <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
-                            <Landmark size={20} color="#2563EB" />
-                        </View>
-                        <View>
-                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-xs">From Your Account</Text>
-                            <Text className="text-neutral-text dark:text-white font-bold">
-                                {bankAccountNo ? `•••• ${bankAccountNo.slice(-4)}` : 'No account linked'}
+                <TouchableOpacity
+                    onPress={() => bankAccounts && bankAccounts.length > 1 && setIsAccountModalVisible(true)}
+                    activeOpacity={0.7}
+                >
+                    <Card className="mb-6 p-5 bg-white dark:bg-neutral-800 border-neutral-border dark:border-neutral-700">
+                        <View className="flex-row items-center mb-0">
+                            <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                                <Landmark size={20} color="#2563EB" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-neutral-text-secondary dark:text-neutral-400 text-xs">From Your Account</Text>
+                                <View className="flex-row items-center">
+                                    <Text className="text-neutral-text dark:text-white font-bold mr-2">
+                                        {fromAccount ? `•••• ${fromAccount.slice(-4)}` : 'No account linked'}
+                                    </Text>
+                                    {bankAccounts && bankAccounts.length > 1 && (
+                                        <ChevronDown size={14} color="#64748B" />
+                                    )}
+                                </View>
+                            </View>
+                            <Text className="ml-auto text-primary font-bold">
+                                ₹{bankAccounts.find((a: any) => a.accountNumber === fromAccount)?.balance.toFixed(2) || '0.00'}
                             </Text>
                         </View>
-                        <Text className="ml-auto text-primary font-bold">₹{bankBalance.toFixed(2)}</Text>
+                    </Card>
+                </TouchableOpacity>
+
+                {/* Account Selection Modal */}
+                <Modal visible={isAccountModalVisible} transparent={true} animationType="fade">
+                    <View className="flex-1 bg-black/60 justify-end">
+                        <View className="bg-white dark:bg-neutral-900 rounded-t-3xl p-6 pb-8 min-h-[40%]">
+                            <View className="flex-row justify-between items-center mb-6">
+                                <Text className="text-xl font-bold text-neutral-text dark:text-white">Select Account</Text>
+                                <TouchableOpacity onPress={() => setIsAccountModalVisible(false)}>
+                                    <Text className="text-primary font-semibold">Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView>
+                                {bankAccounts && bankAccounts.map((acc: any, index: number) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        onPress={() => {
+                                            setFromAccount(acc.accountNumber);
+                                            setIsAccountModalVisible(false);
+                                        }}
+                                        className={`flex-row items-center p-4 mb-3 rounded-2xl border ${fromAccount === acc.accountNumber ? 'border-primary bg-primary/5' : 'border-neutral-200 dark:border-neutral-800'}`}
+                                    >
+                                        <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                                            <Landmark size={20} color="#2563EB" />
+                                        </View>
+                                        <View>
+                                            <Text className="text-neutral-text dark:text-white font-bold">
+                                                {acc.bankName}
+                                            </Text>
+                                            <Text className="text-neutral-text-secondary dark:text-neutral-400 text-xs mt-1">
+                                                •••• {acc.accountNumber.slice(-4)}
+                                            </Text>
+                                        </View>
+                                        {fromAccount === acc.accountNumber && (
+                                            <View className="ml-auto w-4 h-4 rounded-full bg-primary" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
                     </View>
-                </Card>
+                </Modal>
 
                 {/* To Account */}
                 <Text className="text-lg font-bold text-neutral-text dark:text-white mb-3">Transfer To</Text>

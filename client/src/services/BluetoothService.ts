@@ -55,9 +55,76 @@ class BluetoothService {
         manager.stopDeviceScan();
     }
 
+    async connectAndWrite(deviceId: string, payload: string): Promise<boolean> {
+        const manager = this.manager;
+        if (!manager) return false;
+
+        try {
+            console.log(`Connecting to ${deviceId}...`);
+            const device = await manager.connectToDevice(deviceId);
+            console.log(`Discovering services for ${deviceId}...`);
+            await device.discoverAllServicesAndCharacteristics();
+
+            // In a real scenario, we'd find the specific service/characteristic
+            // Here we assume we just write to the first writable characteristic of the target service
+            const services = await device.services();
+            let characteristicFound = null;
+
+            for (const service of services) {
+                if (service.uuid.toUpperCase() === SERVICE_UUID.toUpperCase() || true) { // Relaxed for demo
+                    const characteristics = await service.characteristics();
+                    for (const char of characteristics) {
+                        if (char.isWritableWithResponse || char.isWritableWithoutResponse) {
+                            characteristicFound = char;
+                            break;
+                        }
+                    }
+                }
+                if (characteristicFound) break;
+            }
+
+            if (characteristicFound) {
+                // Encode payload to base64
+                // A lightweight base64 encoder since atob/btoa might not be perfect in RN
+                const base64Payload = Buffer.from(payload).toString('base64');
+
+                if (characteristicFound.isWritableWithResponse) {
+                    await characteristicFound.writeWithResponse(base64Payload);
+                } else {
+                    await characteristicFound.writeWithoutResponse(base64Payload);
+                }
+                console.log('Payload written successfully via Bluetooth');
+                await manager.cancelDeviceConnection(deviceId);
+                return true;
+            } else {
+                console.warn('No writable characteristic found');
+                await manager.cancelDeviceConnection(deviceId);
+                return false;
+            }
+
+        } catch (error) {
+            console.error('BLE Connect & Write Error:', error);
+            try { await manager.cancelDeviceConnection(deviceId); } catch (e) { }
+            return false;
+        }
+    }
+
+    startForegroundListener(onDataReceived: (data: string) => void) {
+        // Real peripheral mode (acting as a GATT server to receive writes) 
+        // is NOT supported natively by react-native-ble-plx.
+        // It only acts as a Central.
+        // To build a true P2P offline mesh, we would need a library like:
+        // react-native-ble-peripheral or Google Nearby Connections API.
+
+        // FOR THIS HACKATHON DEMO:
+        // We will simulate the "listener" by having the Receiver "scan"
+        // and if it finds the Payer's advertised name (e.g. "DigiDhan_Payer"),
+        // it triggers the receive.
+
+        console.log('Peripheral mode mock listener started');
+    }
+
     async advertise() {
-        // Advertising is complex on react-native-ble-plx and often requires native modules or different libraries for generic advertising. 
-        // For this demo, we will focus on scanning. A real offline payment system would use a library like react-native-nearby-messages or platform specific APIs.
         console.log('Advertising not effectively supported in pure ble-plx for all android versions without extra setup.');
     }
 

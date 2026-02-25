@@ -22,8 +22,9 @@ export const Home = () => {
     const navigation = useNavigation<any>();
     const route = useRoute();
     const [refreshing, setRefreshing] = React.useState(false);
-    const [balanceVisible, setBalanceVisible] = React.useState(false);
+    const [balanceVisible, setBalanceVisible] = React.useState<Record<string, boolean>>({});
     const [walletBalanceVisible, setWalletBalanceVisible] = React.useState(false);
+    const [showAccountSelector, setShowAccountSelector] = React.useState(false);
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     const onRefresh = async () => {
@@ -34,35 +35,51 @@ export const Home = () => {
     // Handle balance verified from UPI PIN screen
     React.useEffect(() => {
         const params = route.params as any;
-        if (params?.balanceVerified) {
-            setBalanceVisible(true);
+        if (params?.balanceVerified && params?.verifiedAccount) {
+            setBalanceVisible(prev => ({ ...prev, [params.verifiedAccount]: true }));
             Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
             // Clear the param so it doesn't retrigger
-            navigation.setParams({ balanceVerified: undefined });
+            navigation.setParams({ balanceVerified: undefined, verifiedAccount: undefined });
+
+            // Hide balance automatically after 10 seconds
+            setTimeout(() => {
+                setBalanceVisible(prev => ({ ...prev, [params.verifiedAccount]: false }));
+            }, 10000);
         }
     }, [(route.params as any)?.balanceVerified]);
 
     const { showToast } = useToast();
 
     const toggleBalance = async () => {
-        if (!bankAccountNo) {
+        if (bankAccounts.length === 0) {
             Alert.alert('No Bank Linked', 'Please link your DigiDhan bank account first.', [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Link Now', onPress: () => navigation.navigate('AddBank') }
             ]);
             return;
         }
-        if (balanceVisible) {
-            Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setBalanceVisible(false));
+
+        // If any balance is visible, clicking toggle hides all
+        const isAnyVisible = Object.values(balanceVisible).some(v => v);
+        if (isAnyVisible) {
+            Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setBalanceVisible({}));
+            return;
+        }
+
+        if (bankAccounts.length === 1) {
+            handleAccountSelectForBalance(bankAccounts[0]);
         } else {
-            // Check if UPI PIN is set — if so, require verification
-            const pin = await StorageService.getUpiPin(bankAccountNo);
-            if (pin) {
-                const account = bankAccounts.find((a: any) => a.accountNumber === bankAccountNo);
-                navigation.navigate('SetUpiPin', { account: account || { accountNumber: bankAccountNo }, mode: 'verify', source: 'checkBalance' });
-            } else {
-                showToast('Please set a UPI PIN first', 'warning');
-            }
+            setShowAccountSelector(true);
+        }
+    };
+
+    const handleAccountSelectForBalance = async (account: any) => {
+        setShowAccountSelector(false);
+        const pin = await StorageService.getUpiPin(account.accountNumber);
+        if (pin) {
+            navigation.navigate('SetUpiPin', { account: account, mode: 'verify', source: 'checkBalance' });
+        } else {
+            showToast('Please set a UPI PIN first for this account', 'warning');
         }
     };
 
@@ -175,7 +192,7 @@ export const Home = () => {
                                             </Text>
                                             <Text className="text-neutral-text-secondary dark:text-neutral-400 font-medium text-xs mb-1">Available Balance</Text>
                                             <Text className="text-xl font-bold text-neutral-text dark:text-white">
-                                                {balanceVisible
+                                                {balanceVisible[account.accountNumber]
                                                     ? `₹${(account.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
                                                     : "••••••"}
                                             </Text>
@@ -276,6 +293,39 @@ export const Home = () => {
                 )}
 
             </ScrollView>
+
+            {/* Account Selector Modal for Check Balance */}
+            {showAccountSelector && (
+                <View className="absolute inset-0 z-50 flex justify-end bg-black/50">
+                    <View className="bg-white dark:bg-neutral-900 rounded-t-3xl p-6">
+                        <Text className="text-xl font-bold text-neutral-text dark:text-white mb-4">Select Account</Text>
+                        <Text className="text-neutral-text-secondary dark:text-neutral-400 mb-4">Choose which account to check the balance of.</Text>
+
+                        {bankAccounts.map((account, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                onPress={() => handleAccountSelectForBalance(account)}
+                                className="flex-row items-center p-4 mb-3 border border-neutral-border dark:border-neutral-700 rounded-2xl bg-gray-50 dark:bg-neutral-800"
+                            >
+                                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                                    <Landmark size={20} color="#2563EB" />
+                                </View>
+                                <View>
+                                    <Text className="text-neutral-text dark:text-white font-bold">{account.bankName || 'DigitalDhan Bank'}</Text>
+                                    <Text className="text-xs text-neutral-text-secondary dark:text-neutral-400">•••• {account.accountNumber?.slice(-4)}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+
+                        <Button
+                            title="Cancel"
+                            variant="ghost"
+                            onPress={() => setShowAccountSelector(false)}
+                            className="mt-2"
+                        />
+                    </View>
+                </View>
+            )}
         </SafeAreaView>
     );
 };

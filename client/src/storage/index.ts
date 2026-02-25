@@ -12,6 +12,7 @@ const KEYS = {
     AUTH_TOKEN: 'auth_token',
     APP_CREDENTIALS: 'app_credentials',
     UPI_PINS: 'upi_pins', // Store map of accountNumber -> pin
+    LINKED_ACCOUNTS: 'linked_accounts', // Store array of linked bank accounts
 };
 
 export const StorageService = {
@@ -97,6 +98,15 @@ export const StorageService = {
 
     async getBankAccountNo(): Promise<string | null> {
         return await AsyncStorage.getItem(KEYS.BANK_ACCOUNT_NO);
+    },
+
+    async saveLinkedBankAccounts(accounts: any[]): Promise<void> {
+        await AsyncStorage.setItem(KEYS.LINKED_ACCOUNTS, JSON.stringify(accounts));
+    },
+
+    async getLinkedBankAccounts(): Promise<any[]> {
+        const json = await AsyncStorage.getItem(KEYS.LINKED_ACCOUNTS);
+        return json ? JSON.parse(json) : [];
     },
 
     async saveAuthToken(token: string): Promise<void> {

@@ -63,7 +63,15 @@ export const SetUpiPin = () => {
                 const source = (route.params as any)?.source;
                 if (source === 'checkBalance') {
                     // Go back to Home with verified flag
-                    (navigation as any).navigate('Main', { screen: 'Home', params: { balanceVerified: true } });
+                    (navigation as any).navigate('Main', { screen: 'Home', params: { balanceVerified: true, verifiedAccount: account.accountNumber } });
+                } else if (source === 'checkWalletBalance') {
+                    (navigation as any).navigate('Main', { screen: 'Wallet', params: { balanceVerifiedFromWallet: true, verifiedAccount: account.accountNumber } });
+                } else if (source === 'loadCash') {
+                    const loadAmount = (route.params as any)?.loadAmount;
+                    (navigation as any).navigate('Main', { screen: 'Wallet', params: { pinVerifiedFromLoadCash: true, loadAmount, verifiedAccount: account.accountNumber } });
+                } else if (source === 'selfTransfer') {
+                    const transferData = (route.params as any)?.transferData;
+                    (navigation as any).navigate('SelfTransfer', { pinVerifiedFromSelfTransfer: true, transferData, verifiedAccount: account.accountNumber });
                 } else {
                     (navigation as any).navigate('BankDetails', { account, verified: true });
                 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { CreditCard, Smartphone, Building2, Clock } from "lucide-react";
+import { CreditCard, Smartphone, Building2, Clock, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTransactions } from "../context/TransactionContext";
 
@@ -11,6 +11,7 @@ const AddMoney = () => {
     const [selectedMethod, setSelectedMethod] = useState("");
     const [utrNumber, setUtrNumber] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);
+    const [successAmount, setSuccessAmount] = useState("");
     const [loading, setLoading] = useState(false);
 
     const paymentMethods = [
@@ -26,20 +27,19 @@ const AddMoney = () => {
 
         // Simulate random delay for other methods
         if (selectedMethod !== 'bank_transfer') {
-            setTimeout(async () => {
-                const success = await addTransaction({
-                    amount: parseFloat(amount),
-                    type: 'credit',
-                    to: `Added via ${paymentMethods.find(m => m.id === selectedMethod)?.label}`,
-                    status: 'Success' // Auto-approve for simulated methods? Or Pending? Let's say Success for now as it was "old" behavior likely.
-                });
-                setLoading(false);
-                if (success) {
-                    setShowSuccess(true);
-                    setAmount("");
-                    setSelectedMethod("");
-                }
-            }, 1500);
+            const success = await addTransaction({
+                amount: parseFloat(amount),
+                type: 'credit',
+                to: `Added via ${paymentMethods.find(m => m.id === selectedMethod)?.label}`,
+                status: 'Success' // Auto-approve for simulated methods? Or Pending? Let's say Success for now as it was "old" behavior likely.
+            });
+            setLoading(false);
+            if (success) {
+                setSuccessAmount(amount);
+                setShowSuccess(true);
+                setAmount("");
+                setSelectedMethod("");
+            }
             return;
         }
 
@@ -53,6 +53,7 @@ const AddMoney = () => {
         setLoading(false);
 
         if (success) {
+            setSuccessAmount(amount);
             setShowSuccess(true);
             setAmount("");
             setUtrNumber("");
@@ -103,8 +104,8 @@ const AddMoney = () => {
                                         type="button"
                                         onClick={() => setSelectedMethod(method.id)}
                                         className={`p-4 rounded-xl border flex flex-col items-center gap-3 transition-all ${selectedMethod === method.id
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 text-gray-600 dark:text-gray-400'
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 text-gray-600 dark:text-gray-400'
                                             }`}
                                     >
                                         <Icon size={24} />
@@ -176,11 +177,11 @@ const AddMoney = () => {
                             animate={{ scale: 1, y: 0 }}
                             className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-4"
                         >
-                            <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Clock size={40} />
+                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <CheckCircle size={40} />
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Request Sent!</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-6">Your request to add ₹{amount} has been sent for approval. Your balance will be updated once approved.</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Money Added!</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-6">Successfully added ₹{successAmount} to your wallet. Your balance has been updated.</p>
                             <Button onClick={() => setShowSuccess(false)} className="w-full justify-center">Done</Button>
                         </motion.div>
                     </motion.div>

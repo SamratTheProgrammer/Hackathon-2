@@ -75,11 +75,12 @@ const SendMoney = () => {
             type: "debit",
             status: "Success",
             remarks: remarks,
-            receiverMobile: recipient.mobile // Critical for Backend P2P Logic
+            receiverMobile: recipient.mobile, // Critical for Backend P2P Logic
+            receiverAccount: recipient.accountNumber
         });
 
         if (success) {
-            setSuccessDetails({ amount: amount, recipientName: sendMode === 'mobile' ? recipient?.name : 'Bank Account' });
+            setSuccessDetails({ amount: amount, recipientName: recipient?.name || 'Bank Account' });
             setStatus("success");
             setAmount("");
             setRemarks("");

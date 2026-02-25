@@ -21,7 +21,6 @@ const authenticate = (req, res, next) => {
 // Get current user details
 router.get('/me', authenticate, async (req, res) => {
     try {
-        console.log('GET /me called for userId:', req.userId);
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
             select: {

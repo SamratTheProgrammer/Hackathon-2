@@ -12,8 +12,14 @@ const DashboardLayout = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const { user } = useTransactions();
+    const { user, logout } = useTransactions();
     const { theme, setTheme } = useTheme();
+
+    const handleLogout = (e) => {
+        e.preventDefault();
+        logout();
+        navigate('/login');
+    };
 
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -99,10 +105,10 @@ const DashboardLayout = () => {
                             </div>
                         )}
                     </Link>
-                    <Link to="/login" className={cn("flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-medium", isCollapsed && "justify-center px-2")}>
+                    <button onClick={handleLogout} className={cn("flex items-center w-full gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-medium", isCollapsed && "justify-center px-2")}>
                         <LogOut size={20} />
                         {!isCollapsed && "Logout"}
-                    </Link>
+                    </button>
                 </div>
             </aside>
 
@@ -195,10 +201,10 @@ const DashboardLayout = () => {
                                             </button>
                                         ))}
                                     </div>
-                                    <Link to="/login" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-medium">
+                                    <button onClick={handleLogout} className="flex items-center w-full gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-medium">
                                         <LogOut size={20} />
                                         Logout
-                                    </Link>
+                                    </button>
                                 </div>
                             </motion.aside>
                         </>

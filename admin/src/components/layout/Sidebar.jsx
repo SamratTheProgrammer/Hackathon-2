@@ -9,6 +9,7 @@ import {
     BarChart3,
     Settings,
     ChevronLeft,
+    ChevronRight,
     FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -28,11 +29,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     return (
         <aside
             className={cn(
-                "fixed left-0 top-0 z-40 h-screen bg-primary-dark text-white transition-all duration-300 border-r border-white/5",
+                "fixed left-0 top-0 z-40 h-screen transition-all duration-300 border-r",
+                "bg-white dark:bg-primary-dark text-neutral-900 dark:text-white border-neutral-200 dark:border-white/5",
                 isOpen ? "w-64" : "w-20 hidden md:block"
             )}
         >
-            <div className="flex h-16 items-center justify-between px-4 border-b border-white/5">
+            <div className="flex h-16 items-center justify-between px-4 border-b border-neutral-200 dark:border-white/5">
                 <div className={cn("flex items-center gap-2 font-bold text-xl", !isOpen && "justify-center w-full")}>
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-blue to-accent-teal flex items-center justify-center">
                         <span className="text-white">D</span>
@@ -41,7 +43,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 </div>
 
                 {isOpen && (
-                    <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-white/70 hover:text-white hover:bg-white/10 md:hidden">
+                    <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10 md:hidden">
                         <ChevronLeft size={20} />
                     </Button>
                 )}
@@ -56,7 +58,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 group text-sm font-medium",
                             isActive
                                 ? "bg-primary text-white shadow-lg shadow-black/20 border-l-4 border-accent-teal"
-                                : "text-white/60 hover:text-white hover:bg-white/5",
+                                : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/5",
                             !isOpen && "justify-center px-0"
                         )}
                     >
@@ -65,7 +67,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
                         {/* Tooltip for collapsed state */}
                         {!isOpen && (
-                            <div className="absolute left-16 z-50 ml-2 hidden rounded-md bg-dark-bg px-2 py-1 text-xs text-white shadow-md group-hover:block border border-white/10">
+                            <div className="absolute left-16 z-50 ml-2 hidden rounded-md bg-white dark:bg-dark-bg px-2 py-1 text-xs text-neutral-900 dark:text-white shadow-md group-hover:block border border-neutral-200 dark:border-white/10">
                                 {item.label}
                             </div>
                         )}
@@ -80,7 +82,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     size="sm"
                     onClick={toggleSidebar}
                     className={cn(
-                        "hidden md:flex w-full items-center text-white/40 hover:text-white hover:bg-white/5 border border-white/5",
+                        "hidden md:flex w-full items-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200 dark:text-white/40 dark:hover:text-white dark:hover:bg-white/5 dark:border-white/5",
                         isOpen ? "justify-start px-2" : "justify-center px-0"
                     )}
                 >

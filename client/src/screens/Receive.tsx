@@ -15,8 +15,10 @@ export const Receive = () => {
     const [incomingTxn, setIncomingTxn] = useState<any>(null);
     const [isCopied, setIsCopied] = useState(false);
 
+    // In a real app, this would be the actual BLE MAC or UUID
+    const deviceId = user?.id ? `device_${user.id.substring(0, 8)}` : 'demo_device';
     // Generate UPI URI
-    const upiUri = `upi://pay?pa=${user?.upiId}&pn=${user?.name}&am=0`;
+    const upiUri = `upi://pay?pa=${user?.upiId}&pn=${user?.name}&am=0&deviceId=${deviceId}`;
 
     const handleShare = async () => {
         try {
@@ -39,7 +41,6 @@ export const Receive = () => {
         }
     };
 
-    // Bluetooth Scanning
     const findPayer = async () => {
         const hasPerms = await bluetoothService.requestPermissions();
         if (!hasPerms) {
@@ -48,30 +49,55 @@ export const Receive = () => {
         }
 
         setIsScanning(true);
-        bluetoothService.startScan((device) => {
-            // In a real app, we would handshake here.
-            // For demo, if we find a device with a specific name or just any device for simulation
-            // We will simulate finding a payer after a random delay if a device is found
-            if (device) {
-                bluetoothService.stopScan();
-                setIsScanning(false);
-                setIncomingTxn({
-                    name: device.name || 'Unknown Device',
-                    upiId: 'device@bank',
-                    amount: 50.00
-                });
-                setShowConfirm(true);
+
+        // Start "Foreground Listener" to simulate acting as a GATT server
+        bluetoothService.startForegroundListener((data) => {
+            try {
+                const parsedData = JSON.parse(data);
+                if (parsedData.amount && parsedData.payerName) {
+                    setIsScanning(false);
+                    setIncomingTxn({
+                        name: parsedData.payerName,
+                        upiId: parsedData.payerUpiId,
+                        amount: parsedData.amount,
+                        timestamp: parsedData.timestamp
+                    });
+                    setShowConfirm(true);
+                }
+            } catch (e) {
+                console.error("Failed to parse incoming BLE payload:", e);
             }
         });
 
-        // Time out scan after 10 seconds if no device found (or just to stop scan)
+        // FOR DEMO: Simulate Payer connecting after a random wait
+        // In a real app, the `startForegroundListener` callback handles the rest.
+        bluetoothService.startScan((device) => {
+            // We just scan to ensure Bluetooth is active and find *any* device to trigger simulation
+            if (device && Math.random() > 0.5) { // Adding randomness so it doesn't instantly fire on any stray watch nearby
+                bluetoothService.stopScan();
+                setTimeout(() => {
+                    if (isScanning) {
+                        setIsScanning(false);
+                        setIncomingTxn({
+                            name: 'Demo Payer (Bluetooth)',
+                            upiId: 'payer@digidhan',
+                            amount: 15.00,
+                            timestamp: new Date().toISOString()
+                        });
+                        setShowConfirm(true);
+                    }
+                }, 2000); // Wait 2s before mock connection
+            }
+        });
+
+        // Time out scan after 10 seconds if no device found
         setTimeout(() => {
             if (isScanning) {
                 bluetoothService.stopScan();
                 setIsScanning(false);
-                Alert.alert('No Payer Found', 'Could not find any nearby devices.');
+                Alert.alert('Timeout', 'Could not establish connection with payer.');
             }
-        }, 10000);
+        }, 15000);
     };
 
     const handleAccept = async () => {

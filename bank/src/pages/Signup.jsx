@@ -178,14 +178,10 @@ const Signup = () => {
 
                 login(userData, response.data.token);
                 toast.success("Account created successfully!");
-                setTimeout(() => {
-                    navigate("/dashboard");
-                }, 1000);
+                navigate("/dashboard");
             } else {
                 toast.success("Account created successfully! Please login.");
-                setTimeout(() => {
-                    navigate("/login");
-                }, 2000);
+                navigate("/login");
             }
 
         } catch (error) {

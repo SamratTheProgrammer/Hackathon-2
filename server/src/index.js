@@ -40,5 +40,5 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`); // Force restart for .env changes
 });

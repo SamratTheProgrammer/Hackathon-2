@@ -100,9 +100,7 @@ const Login = () => {
 
             login(userData, data.token);
             toast.success("Login successful!");
-            setTimeout(() => {
-                navigate("/dashboard");
-            }, 1000);
+            navigate("/dashboard");
         }
     };
 

@@ -125,7 +125,7 @@ router.get('/pending', async (req, res) => {
 // Create a new transaction (Add Money / Send Money / P2P)
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { amount, type, to, status, receiverMobile } = req.body;
+        const { amount, type, to, status, receiverMobile, receiverAccount, receiverUpiId } = req.body;
 
         if (!amount || !type) {
             return res.status(400).json({ message: 'Amount and type are required' });
@@ -139,33 +139,47 @@ router.post('/', authenticate, async (req, res) => {
 
         const result = await prisma.$transaction(async (prismaTx) => {
             // 1. P2P Transfer Logic (Debit from Sender, Credit to Receiver)
-            if (type === 'debit' && receiverMobile) {
+            if (type === 'debit' && (receiverMobile || receiverAccount || receiverUpiId)) {
                 // Find Receiver
-                const receiver = await prismaTx.user.findFirst({ where: { mobile: receiverMobile } });
+                let receiver = null;
+                if (receiverAccount) {
+                    receiver = await prismaTx.user.findFirst({ where: { accountNumber: receiverAccount } });
+                } else if (receiverUpiId) {
+                    // Extract mobile from UPI ID (e.g., 9876543210@digidhan)
+                    const mobileMatch = receiverUpiId.split('@')[0];
+                    if (mobileMatch) {
+                        receiver = await prismaTx.user.findFirst({ where: { mobile: mobileMatch } });
+                    }
+                } else if (receiverMobile) {
+                    receiver = await prismaTx.user.findFirst({ where: { mobile: receiverMobile } });
+                }
+
                 if (!receiver) {
                     throw new Error('Receiver not found');
                 }
-                if (receiver.id === req.userId) {
-                    throw new Error('Cannot transfer to self');
-                }
 
-                // Check Sender Balance
-                const sender = await prismaTx.user.findUnique({ where: { id: req.userId } });
+                // Fetch sender's current balance and name for checks and notifications
+                const sender = await prismaTx.user.findUnique({ where: { id: req.userId }, select: { balance: true, name: true } });
                 if (sender.balance < parseFloat(amount)) {
                     throw new Error('Insufficient balance');
                 }
 
-                // Debit Sender
-                await prismaTx.user.update({
-                    where: { id: req.userId },
-                    data: { balance: { decrement: parseFloat(amount) } }
-                });
+                // If Sender is not Receiver, update balances
+                const isSelfTransfer = receiver.id === req.userId;
 
-                // Credit Receiver
-                await prismaTx.user.update({
-                    where: { id: receiver.id },
-                    data: { balance: { increment: parseFloat(amount) } }
-                });
+                if (!isSelfTransfer) {
+                    // Debit Sender sequentially
+                    await prismaTx.user.update({
+                        where: { id: req.userId },
+                        data: { balance: { decrement: parseFloat(amount) } }
+                    });
+
+                    // Credit Receiver sequentially
+                    await prismaTx.user.update({
+                        where: { id: receiver.id },
+                        data: { balance: { increment: parseFloat(amount) } }
+                    });
+                }
 
                 // Create Debit Transaction for Sender
                 const senderTx = await prismaTx.transaction.create({
@@ -173,7 +187,7 @@ router.post('/', authenticate, async (req, res) => {
                         userId: req.userId,
                         amount: parseFloat(amount),
                         type: 'debit',
-                        to: receiver.name || receiverMobile,
+                        to: receiver.name || receiverMobile || receiverAccount,
                         remarks: req.body.remarks,
                         status: 'Success'
                     }
@@ -185,7 +199,7 @@ router.post('/', authenticate, async (req, res) => {
                         userId: receiver.id,
                         amount: parseFloat(amount),
                         type: 'credit',
-                        to: sender.name || 'P2P Transfer',
+                        to: senderCheck.name || 'P2P Transfer',
                         remarks: req.body.remarks,
                         status: 'Success'
                     }
@@ -196,16 +210,16 @@ router.post('/', authenticate, async (req, res) => {
                     data: {
                         userId: receiver.id,
                         title: "Money Received",
-                        message: `You received ₹${amount} from ${sender.name || 'a user'}.`,
+                        message: `You received ₹${amount} from ${senderCheck.name || 'a user'}.`,
                         type: "transaction",
                         relatedId: receiverTx.id
                     }
                 });
 
-                // Process Rewards for Sender
-                const rewards = await processRewards(req.userId, prismaTx);
+                // Process Rewards for Sender (deferred until after tx)
+                const pendingRewards = { type: 'p2p', userId: req.userId };
 
-                return { transaction: senderTx, rewards };
+                return { transaction: senderTx, pendingRewards };
             }
 
             // 2. Standard Transaction Logic (Add Money / Withdrawal / Bill Pay)
@@ -244,23 +258,30 @@ router.post('/', authenticate, async (req, res) => {
                 });
             }
 
-            // Process Rewards if Success
-            let rewards = null;
+            // Process Rewards if Success (deferred until after tx)
+            let pendingRewards = null;
             if (txStatus === 'Success') {
-                rewards = await processRewards(req.userId, prismaTx);
+                pendingRewards = { type: 'standard', userId: req.userId };
             }
 
-            return { transaction, rewards };
+            return { transaction, pendingRewards };
         }, { maxWait: 10000, timeout: 20000 });
 
         // Get updated balance to return
         const updatedUser = await prisma.user.findUnique({ where: { id: req.userId } });
 
+        // Execute deferred rewards processing OUTSIDE the transaction loop so we don't deadlock
+        let rewards = null;
+        if (result.pendingRewards) {
+            // We can pass the standard `prisma` instance here since the tx is closed
+            rewards = await processRewards(result.pendingRewards.userId, prisma);
+        }
+
         res.status(201).json({
             message: 'Transaction successful',
             transaction: result.transaction,
             newBalance: updatedUser.balance,
-            rewards: result.rewards
+            rewards: rewards
         });
 
     } catch (error) {

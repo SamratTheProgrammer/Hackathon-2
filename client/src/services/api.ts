@@ -13,28 +13,20 @@ const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000) =>
 
 export const MockApi = {
     fetchBankBalance: async (): Promise<number> => {
-        return new Promise((resolve) => setTimeout(() => resolve(25000.50), 1000));
+        return 25000.50;
     },
 
     searchUser: async (query: string): Promise<UserProfile[]> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve([
-                    { id: 'u2', name: 'Alice Smith', phone: '9876543210', upiId: 'alice@bank' },
-                    { id: 'u3', name: 'Bob Jones', phone: '8765432109', upiId: 'bob@bank' },
-                ].filter(u => u.name.toLowerCase().includes(query.toLowerCase()) || u.phone.includes(query)));
-            }, 500);
-        });
+        return Promise.resolve([
+            { id: 'u2', name: 'Alice Smith', phone: '9876543210', upiId: 'alice@bank' },
+            { id: 'u3', name: 'Bob Jones', phone: '8765432109', upiId: 'bob@bank' },
+        ].filter(u => u.name.toLowerCase().includes(query.toLowerCase()) || u.phone.includes(query)));
     },
 
     syncTransactions: async (transactions: Transaction[]): Promise<{ synced: string[], failed: string[] }> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const synced = transactions.filter((_, i) => i % 2 === 0).map(t => t.id);
-                const failed = transactions.filter((_, i) => i % 2 !== 0).map(t => t.id);
-                resolve({ synced, failed });
-            }, 2000);
-        });
+        const synced = transactions.filter((_, i) => i % 2 === 0).map(t => t.id);
+        const failed = transactions.filter((_, i) => i % 2 !== 0).map(t => t.id);
+        return Promise.resolve({ synced, failed });
     },
 
     verifyBankAccount: async (accountNumber: string, token: string): Promise<any> => {
@@ -218,6 +210,28 @@ export const MockApi = {
         }
     },
 
+    sendP2PMoney: async (amount: number, receiverConfig: { receiverAccount?: string, receiverUpiId?: string }, remarks: string, token: string): Promise<any> => {
+        try {
+            const response = await fetchWithTimeout(`${API_URL}/transactions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount, type: 'debit', ...receiverConfig, remarks })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Transaction failed');
+            }
+            return await response.json();
+        } catch (error: any) {
+            console.error('Send Money API Error:', error);
+            throw error;
+        }
+    },
+
     sendOtp: async (accountNumber: string, token: string = ''): Promise<any> => {
         try {
             const response = await fetchWithTimeout(`${API_URL}/user/send-otp`, {
@@ -248,6 +262,27 @@ export const MockApi = {
             }
             return true;
         } catch (error) {
+            throw error;
+        }
+    },
+
+    linkAccountToServer: async (accountNumber: string, appUserToken: string): Promise<any> => {
+        try {
+            const response = await fetchWithTimeout(`${API_URL}/app-auth/link-account`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${appUserToken}`
+                },
+                body: JSON.stringify({ accountNumber })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to link account to server');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Link Account To Server API Error:', error);
             throw error;
         }
     }

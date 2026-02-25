@@ -1,13 +1,15 @@
 import { useState } from "react";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import { ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp, TrendingDown, Gift } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp, TrendingDown, Gift, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTransactions } from "../context/TransactionContext";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
     const { balance, transactions, user } = useTransactions();
+    const [copied, setCopied] = useState(false);
+
     const recentTransactions = transactions.slice(0, 3);
 
     const income = transactions
@@ -31,7 +33,22 @@ const Dashboard = () => {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
                             <p className="text-gray-500 dark:text-gray-400">Welcome back, {user.name}!</p>
-                            <p className="text-sm font-mono text-gray-500 dark:text-gray-500">Ac No: {user.accountNumber || 'N/A'}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <p className="text-sm font-mono text-gray-500 dark:text-gray-500">Ac No: {user.accountNumber || 'N/A'}</p>
+                                {user.accountNumber && (
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(user.accountNumber);
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                        className="text-gray-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        title="Copy Account Number"
+                                    >
+                                        {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
